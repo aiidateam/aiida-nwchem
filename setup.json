@@ -1,0 +1,28 @@
+{
+    "version": "0.1.0",
+    "name": "aiida_nwchem",
+    "url": "https://github.com/aiidateam/aiida-nwchem",
+    "license": "MIT License",
+    "author": "Sebastiaan P. Huber",
+    "author_email": "mail@sphuber.net",
+    "description": "The AiiDA plugin for NWChem",
+    "classifiers": [
+        "License :: OSI Approved :: MIT License",
+        "Programming Language :: Python :: 2.7",
+        "Development Status :: 4 - Beta"
+    ],
+    "install_requires": [
+        "aiida"
+    ],
+    "entry_points": {
+        "aiida.calculations": [
+            "nwchem.basic = aiida_nwchem.basic:BasicCalculation",
+            "nwchem.pymatgen = aiida_nwchem.nwcpymatgen:NwcpymatgenCalculation",
+        ],
+        "aiida.parsers": [
+            "nwchem.basic = aiida_nwchem.basic:BasicParser",
+            "nwchem.basenwc = aiida_nwchem.__init__:BasenwcParser",
+            "nwchem.pymatgen = aiida_nwchem.nwcpymatgen:NwcpymatgenParser",
+        ],
+    }
+}
