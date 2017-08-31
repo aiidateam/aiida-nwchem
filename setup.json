@@ -16,13 +16,13 @@
     ],
     "entry_points": {
         "aiida.calculations": [
-            "nwchem.basic = aiida_nwchem.basic:BasicCalculation",
-            "nwchem.pymatgen = aiida_nwchem.nwcpymatgen:NwcpymatgenCalculation"
+            "nwchem.basic = aiida_nwchem.calculations.basic:BasicCalculation",
+            "nwchem.pymatgen = aiida_nwchem.calculations.nwcpymatgen:NwcpymatgenCalculation"
         ],
         "aiida.parsers": [
-            "nwchem.basic = aiida_nwchem.basic:BasicParser",
-            "nwchem.basenwc = aiida_nwchem.__init__:BasenwcParser",
-            "nwchem.pymatgen = aiida_nwchem.nwcpymatgen:NwcpymatgenParser"
+            "nwchem.basic = aiida_nwchem.parsers.basic:BasicParser",
+            "nwchem.basenwc = aiida_nwchem.parsers.__init__:BasenwcParser",
+            "nwchem.pymatgen = aiida_nwchem.parsers.nwcpymatgen:NwcpymatgenParser"
         ],
         "aiida.tools.dbexporters.tcod_plugins": [
             "nwchem.nwcpymatgen = aiida_nwchem.tools.dbexporters.tcod_plugins.nwcpymatgen:NwcpymatgenTcodtranslator"
