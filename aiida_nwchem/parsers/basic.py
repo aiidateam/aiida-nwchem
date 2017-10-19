@@ -7,8 +7,8 @@
 # For further information on the license, see the LICENSE.txt file        #
 # For further information please visit http://www.aiida.net               #
 ###########################################################################
-from aiida.parsers.plugins.nwchem import BasenwcParser
-from aiida.orm.calculation.job.nwchem.basic import BasicCalculation
+from aiida_nwchem.parsers import BasenwcParser
+from aiida_nwchem.calculations.basic import BasicCalculation
 from aiida.orm.data.parameter import ParameterData
 
 
