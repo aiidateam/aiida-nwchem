@@ -1,19 +1,12 @@
 {
-    "version": "0.1.0",
-    "name": "aiida_nwchem",
-    "url": "https://github.com/aiidateam/aiida-nwchem",
-    "license": "MIT License",
-    "author": "Sebastiaan P. Huber",
-    "author_email": "mail@sphuber.net",
-    "description": "The AiiDA plugin for NWChem",
+    "author": "The AiiDA team",
+    "author_email": "developers@aiida.net",
     "classifiers": [
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python :: 2.7",
         "Development Status :: 4 - Beta"
     ],
-    "install_requires": [
-        "aiida"
-    ],
+    "description": "The official AiiDA plugin for NWChem",
     "entry_points": {
         "aiida.calculations": [
             "nwchem.basic = aiida_nwchem.calculations.basic:BasicCalculation",
@@ -27,5 +20,22 @@
         "aiida.tools.dbexporters.tcod_plugins": [
             "nwchem.nwcpymatgen = aiida_nwchem.tools.dbexporters.tcod_plugins.nwcpymatgen:NwcpymatgenTcodtranslator"
         ]
-    }
+    },
+    "extras_require": {
+        "dev_precommit": [
+            "pre-commit"
+        ],
+        "docs": [
+            "Sphinx",
+            "docutils",
+            "sphinx_rtd_theme"
+        ]
+    },
+    "install_requires": [
+        "aiida-core>=0.10.0"
+    ],
+    "license": "MIT License",
+    "name": "aiida_nwchem",
+    "url": "https://github.com/aiidateam/aiida-nwchem",
+    "version": "1.0.0"
 }
