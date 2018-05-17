@@ -11,7 +11,7 @@
 Tests for the NWChem input plugins.
 """
 
-from aiida.orm.calculation.job.nwchem.nwcpymatgen import _prepare_pymatgen_dict
+from aiida_nwchem.calculations.nwcpymatgen import _prepare_pymatgen_dict
 from aiida.orm.data.structure import has_ase, has_pymatgen, StructureData
 import unittest
 from aiida.backends.testbase import AiidaTestCase

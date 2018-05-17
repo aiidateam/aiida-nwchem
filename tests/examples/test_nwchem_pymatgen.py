@@ -43,7 +43,7 @@ queue = None
 settings = None
 #####
 
-code = test_and_get_code(codename, expected_code_type='nwchem.nwcpymatgen')
+code = test_and_get_code(codename, expected_code_type='nwchem.pymatgen')
 
 calc = code.new_calc()
 calc.label = "Test NWChem"

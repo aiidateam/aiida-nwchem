@@ -1,4 +1,4 @@
-nwchem.nwcpymatgen
+nwchem.pymatgen
 ++++++++++++++++++
 
 Description

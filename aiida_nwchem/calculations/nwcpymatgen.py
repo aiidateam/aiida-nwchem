@@ -51,7 +51,7 @@ class NwcpymatgenCalculation(JobCalculation):
         super(NwcpymatgenCalculation, self)._init_internal_params()
 
         # Name of the default parser
-        self._default_parser = 'nwchem.nwcpymatgen'
+        self._default_parser = 'nwchem.pymatgen'
 
         # Default input and output files
         self._DEFAULT_INPUT_FILE  = 'aiida.in'
