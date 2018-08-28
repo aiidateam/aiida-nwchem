@@ -103,7 +103,7 @@ class BasicCalculation(JobCalculation):
         input_filename = tempfolder.get_abs_path(self._DEFAULT_INPUT_FILE)
         with open(input_filename,'w') as f:
             f.write('start {}\ntitle "{}"\n\n'.format(abbreviation,title))
-            f.write('geometry units au\n')
+            f.write('geometry units angstroms\n')
             if add_cell:
                 f.write('  system crystal\n')
                 f.write('    lat_a {}\n    lat_b {}\n    lat_c {}\n'.format(*lat_lengths))
