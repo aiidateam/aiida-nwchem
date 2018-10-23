@@ -22,11 +22,11 @@ class FakeObject(object):
 class TestTcodDbExporter(AiidaTestCase):
 
     def test_nwcpymatgen_translation(self):
-        from aiida.common.pluginloader import get_plugin
         from aiida.orm.data.parameter import ParameterData
+        from aiida.plugins.entry_point import load_entry_point
         from aiida.tools.dbexporters.tcod import translate_calculation_specific_values
 
-        tcod_plugin = get_plugin('tools.dbexporters.tcod_plugins', 'nwchem.nwcpymatgen')
+        tcod_plugin = load_entry_point('aiida.tools.dbexporters.tcod_plugins', 'nwchem.nwcpymatgen')
 
         calc = FakeObject({
             "out": {"output":
