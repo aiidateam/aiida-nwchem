@@ -17,9 +17,7 @@ import unittest
 from aiida.backends.testbase import AiidaTestCase
 
 
-
-
-class TestNwchem(AiidaTestCase):
+class TestNwchemInput(AiidaTestCase):
 
     @unittest.skipIf(not has_ase(), "Unable to import ase")
     @unittest.skipIf(not has_pymatgen(), "Unable to import pymatgen")

@@ -18,8 +18,9 @@
             "nwchem.pymatgen = aiida_nwchem.parsers.nwcpymatgen:NwcpymatgenParser"
         ],
         "aiida.tests": [
+            "nwchem.input = aiida_nwchem.tests.input",
             "nwchem.tcodexporter = aiida_nwchem.tests.tcodexporter"
-        ], 
+        ],
         "aiida.tools.dbexporters.tcod_plugins": [
             "nwchem.nwcpymatgen = aiida_nwchem.tools.dbexporters.tcod_plugins.nwcpymatgen:NwcpymatgenTcodtranslator"
         ]
