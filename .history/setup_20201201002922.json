@@ -22,7 +22,7 @@
         ],
         "aiida.tests": [
             "nwchem.tcodexporter = aiida_nwchem.tests.tcodexporter"
-        ],
+        ], 
         "aiida.tools.dbexporters.tcod_plugins": [
             "nwchem.nwcpymatgen = aiida_nwchem.tools.dbexporters.tcod_plugins.nwcpymatgen:NwcpymatgenTcodtranslator"
         ]
