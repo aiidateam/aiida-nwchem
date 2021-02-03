@@ -77,11 +77,6 @@ class NwchemBaseParser(Parser):
         with self.retrieved.open(output_filename, 'r') as fhandle:
             all_lines = [line.strip('\n') for line in fhandle.readlines()]
 
-        # A list to hold the dictionaries for each calculation task
-        result_list = []
-        # List to hold all output nodes
-        output_nodes_list = []
-
         # Check if NWChem finished:
         #TODO: Handle the case of the 'ignore' keyword
         if not re.search(r'^\sTotal times  cpu:', all_lines[-1]):
@@ -127,7 +122,7 @@ class NwchemBaseParser(Parser):
             line = lines[index]
 
             if state == 'error_info':
-                if re.match(r'^\s------------------------------------------------------------------------$', line):
+                if re.match(r'^\s-+$', line):
                     error_lines.append(info)
                     info = ""
                     state = None
@@ -136,7 +131,7 @@ class NwchemBaseParser(Parser):
                     info = line + info # Order important because we looping backwards
                     continue
             else:
-                if re.match(r'^\s------------------------------------------------------------------------$', line):
+                if re.match(r'^\s-+$', line):
                     state = 'error_info'
                     continue
                 #else:
