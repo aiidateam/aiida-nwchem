@@ -205,6 +205,9 @@ class NwchemBaseParser(Parser):
                 elif re.match(r'^[\s\*]*NWPW BAND Calculation[\s\*]*$',line):
                     task_dict['theory_type'] = 'nwpw_band'
                     continue
+                elif re.match(r'^[\s]+NWChem Extensible Many-Electron Theory Module[\s]*$', line):
+                    task_dict['theory_type'] = 'tce'
+                    continue
 
                 # Check if we've hit the end of the task block
                 if re.match(r'^ Task  times  cpu:\s+[0-9.]+s\s+wall:\s+[0-9.]+s$', line):
@@ -334,6 +337,52 @@ class NwchemBaseParser(Parser):
 
         if forces:
             result_dict['forces'] = forces
+
+        return result_dict
+
+
+    def parse_tce(self,lines):
+        """
+        Parse a TCE task block
+
+        args: lines: the lines to parse
+        """
+
+        result_dict = {'theory': 'tce'}
+        state = None
+
+        for line in lines:
+
+            result = re.match(r'^[\s]+Wavefunction type :([A-z\s-]+)\s*$',line)
+            if result:
+                result_dict['wavefunction_type'] = result.group(1).strip()
+
+            result = re.match(r'^\s+Spin multiplicity :\s*([A-z]+)\s*$',line)
+            if result:
+                result_dict['spin_multiplicity'] = result.group(1)
+
+            result = re.match(r'^\s+Number of AO functions :\s*([0-9]+)$',line)
+            if result:
+                result_dict['number_of_AO_functions'] = result.group(1)
+
+            result = re.match(r'^[\s]+Calculation type :([A-z\s,&-]+)\s*$',line)
+            if result:
+                result_dict['calculation_type'] = result.group(1).strip()
+
+            if re.match(r'^\s*Iterations converged\s*$',line):
+                state = 'final-results'
+            if state == 'final-results':
+                result = re.match(r'^\s*([^=]+?)\s*=\s*([\-\d\.]+)$',line)
+                if result:
+                    key = re.sub(r'[^a-zA-Z0-9]+', '_', result.group(1).lower())
+                    result_dict[key] = result.group(2)
+
+            # End of task
+            if re.match('^ Task  times  cpu:', line):
+                result = re.match(r'^ Task  times  cpu:\s*([\d\.\d]+)s\s*wall:\s*([\d\.\d]+)s', line)
+                result_dict['cpu_time'] = result.group(1)
+                result_dict['wall_time'] = result.group(2)
+                break
 
         return result_dict
 
