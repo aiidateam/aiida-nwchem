@@ -1,4 +1,6 @@
-{
+{   "name": "aiida_nwchem",
+    "url": "https://github.com/aiidateam/aiida-nwchem",
+    "version": "2.0.0b1",
     "author": "The AiiDA team",
     "author_email": "developers@aiida.net",
     "classifiers": [
@@ -16,9 +18,10 @@
             "nwchem.pymatgen = aiida_nwchem.calculations.nwcpymatgen:NwcpymatgenCalculation"
         ],
         "aiida.parsers": [
-            "nwchem.basic = aiida_nwchem.parsers.basic:BasicParser",
-            "nwchem.basenwc = aiida_nwchem.parsers.__init__:BasenwcParser",
-            "nwchem.pymatgen = aiida_nwchem.parsers.nwcpymatgen:NwcpymatgenParser"
+            "nwchem.nwchem = aiida_nwchem.parsers.nwchem:NwchemBaseParser"
+        ],
+        "aiida.workflows": [
+            "nwchem.base = aiida_nwchem.workflows.base:NwchemBaseWorkChain"
         ],
         "aiida.tests": [
             "nwchem.tcodexporter = aiida_nwchem.tests.tcodexporter"
@@ -47,13 +50,11 @@
         ]
     },
     "install_requires": [
-        "numpy"
+        "numpy",
+        "aiida-core[atomic_tools] >=1.2.1"
     ],
     "python_requires": ">=3.6",
-    "license": "MIT License",
-    "name": "aiida_nwchem",
-    "url": "https://github.com/aiidateam/aiida-nwchem",
-    "version": "2.0.0"
+    "license": "MIT License"
 }
 
 
