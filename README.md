@@ -1,5 +1,19 @@
 # aiida-nwchem
-AiiDA plugin for NWChem
+AiiDA-NWChem is the AiiDA plugin for the NWChem code. 
+
+The plugin provides support for the following calculation tasks:
+- energy
+- optimize
+- freq
+
+...using these theory types:
+- scf
+- dft
+- NWPW Band
+- TCE
+
+Version 2.x+ of the plugin is compatible only with `aiida-core` v1.0+ 
+
 
 # Documentation
 The documentation for this package can be found on Read the Docs at 
