@@ -14,8 +14,7 @@
     "description": "The official AiiDA plugin for NWChem",
     "entry_points": {
         "aiida.calculations": [
-            "nwchem.nwchem = aiida_nwchem.calculations.nwchem:NwchemCalculation",
-            "nwchem.pymatgen = aiida_nwchem.calculations.nwcpymatgen:NwcpymatgenCalculation"
+            "nwchem.nwchem = aiida_nwchem.calculations.nwchem:NwchemCalculation"
         ],
         "aiida.parsers": [
             "nwchem.nwchem = aiida_nwchem.parsers.nwchem:NwchemBaseParser"
