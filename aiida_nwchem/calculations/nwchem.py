@@ -44,6 +44,10 @@ class NwchemCalculation(CalcJob):
         spec.input('metadata.options.output_filename', valid_type=str, default=cls._DEFAULT_OUTPUT_FILE)
         spec.input('metadata.options.parser_name', valid_type=str, default='nwchem.nwchem')
         spec.input('metadata.options.withmpi', valid_type=bool, default=True)
+        spec.input('metadata.options.total_memory',
+            valid_type=float,
+            default=2000.,
+            help='Total memory available per MPI process in MB')
 
         spec.output('output_parameters', valid_type=orm.Dict)
         spec.output('output_structure', valid_type=orm.StructureData, required=False,
@@ -82,7 +86,7 @@ class NwchemCalculation(CalcJob):
         parameters = self.inputs.parameters.get_dict()
         abbreviation = parameters.pop('abbreviation','aiida_calc')
         title = parameters.pop('title','AiiDA NWChem calculation')
-        memory = parameters.pop('memory', 'total 2000 mb') # Memory available per MPI task # TODO Should be a metadata option
+        memory = self.inputs.metadata.options.total_memory
         basis = parameters.pop('basis',None)
         symmetry = parameters.pop('symmetry', None)
         set_commands = parameters.pop('set', None)
@@ -114,7 +118,7 @@ class NwchemCalculation(CalcJob):
             # Title
             f.write('start {}\ntitle "{}"\n'.format(abbreviation,title))
             # Memory
-            f.write('memory {}\n'.format(memory))
+            f.write('memory {} mb\n'.format(memory))
             # Cell
             f.write('geometry units angstroms noautoz noautosym\n')
             if add_cell:
