@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Template file provided by the aiida-plugin-template; modify 
-# according to your needs
+# Sphinx configuration
 #
 # This file is execfile()d with the current directory set to its
 # containing dir.
@@ -16,12 +15,26 @@ import os
 import sys
 import time
 
+import aiida_nwchem
+from aiida.manage.configuration import load_documentation_profile
+
+# -- AiiDA-related setup --------------------------------------------------
+
+# Load the dummy profile even if we are running locally, this way the documentation will succeed even if the current
+# default profile of the AiiDA installation does not use a Django backend.
+load_documentation_profile()
+
+# If we are not on READTHEDOCS load the Sphinx theme manually
+if not os.environ.get('READTHEDOCS', None):
+    import sphinx_rtd_theme
+    html_theme = 'sphinx_rtd_theme'
+    html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+
+# -- General configuration ------------------------------------------------
+
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-import aiida_nwchem
-
-# -- General configuration ------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
 needs_sphinx = '1.5'
@@ -34,11 +47,14 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.intersphinx',
     'sphinx.ext.viewcode',
+    'sphinxcontrib.contentui',
+    'aiida.sphinxext',
+    'sphinxcontrib.napoleon',
 ]
 
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/2.7', None),
-    'aiida': ('http://aiida_core.readthedocs.io/en/latest/', None),
+    'python': ('https://docs.python.org/3', None),
+    'aiida': ('https://aiida-core.readthedocs.io/en/latest', None),
 }
 
 nitpick_ignore = [('py:obj', 'module')]
@@ -58,12 +74,15 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'aiida-nwchem'
-copyright_first_year = 2014
-copyright_owners = "ECOLE POLYTECHNIQUE FEDERALE DE LAUSANNE (Theory and Simulation of Materials (THEOS) and National Centre for Computational Design and Discovery of Novel Materials (NCCR MARVEL)), Switzerland"
+copyright_first_year = "2021"
+copyright_owners = "The AiiDA Team"
 
-current_year = time.localtime().tm_year
-copyright_year_string = current_year if current_year == copyright_first_year else "{}-{}".format(copyright_first_year, current_year)
-copyright = u'{}, {}. All rights reserved'.format(copyright_year_string, copyright_owners)
+current_year = str(time.localtime().tm_year)
+copyright_year_string = current_year if current_year == copyright_first_year else "{}-{}".format(
+    copyright_first_year, current_year)
+# pylint: disable=redefined-builtin
+copyright = u'{}, {}. All rights reserved'.format(copyright_year_string,
+                                                  copyright_owners)
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -116,7 +135,6 @@ pygments_style = 'sphinx'
 # If true, keep warnings as "system message" paragraphs in the built documents.
 #keep_warnings = False
 
-
 # -- Options for HTML output ----------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -127,11 +145,9 @@ pygments_style = 'sphinx'
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-#~ html_theme_options = {
-  #~ 'inner_theme': True,
-  #~ 'inner_theme_name': 'bootswatch-darkly',
-  #~ 'nav_fixed_top': False
-#~ }
+html_theme_options = {
+    'display_version': True,
+}
 
 # Add any paths that contain custom themes here, relative to this directory.
 #~ html_theme_path = ["."]
@@ -223,17 +239,17 @@ htmlhelp_basename = 'aiida-nwchem-doc'
 # -- Options for LaTeX output ---------------------------------------------
 
 latex_elements = {
-# The paper size ('letterpaper' or 'a4paper').
-#'papersize': 'letterpaper',
+    # The paper size ('letterpaper' or 'a4paper').
+    #'papersize': 'letterpaper',
 
-# The font size ('10pt', '11pt' or '12pt').
-#'pointsize': '10pt',
+    # The font size ('10pt', '11pt' or '12pt').
+    #'pointsize': '10pt',
 
-# Additional stuff for the LaTeX preamble.
-#'preamble': '',
+    # Additional stuff for the LaTeX preamble.
+    #'preamble': '',
 
-# Latex figure (float) alignment
-#'figure_align': 'htbp',
+    # Latex figure (float) alignment
+    #'figure_align': 'htbp',
 }
 
 # Grouping the document tree into LaTeX files. List of tuples
@@ -262,6 +278,49 @@ latex_elements = {
 # If false, no module index is generated.
 #latex_domain_indices = True
 
+# NOTE: Diabling API docs
+# def run_apidoc(_):
+#     """Runs sphinx-apidoc when building the documentation.
+
+#     Needs to be done in conf.py in order to include the APIdoc in the
+#     build on readthedocs.
+
+#     See also https://github.com/rtfd/readthedocs.org/issues/1139
+#     """
+#     source_dir = os.path.abspath(os.path.dirname(__file__))
+#     apidoc_dir = os.path.join(source_dir, 'apidoc')
+#     package_dir = os.path.join(source_dir, os.pardir, os.pardir, 'aiida_nwchem')
+
+#     # In #1139, they suggest the route below, but this ended up
+#     # calling sphinx-build, not sphinx-apidoc
+#     #from sphinx.apidoc import main
+#     #main([None, '-e', '-o', apidoc_dir, package_dir, '--force'])
+
+#     import subprocess
+#     cmd_path = 'sphinx-apidoc'
+#     if hasattr(sys, 'real_prefix'):  # Check to see if we are in a virtualenv
+#         # If we are, assemble the path manually
+#         cmd_path = os.path.abspath(
+#             os.path.join(sys.prefix, 'bin', 'sphinx-apidoc'))
+
+#     options = [
+#         '-o',
+#         apidoc_dir,
+#         package_dir,
+#         '--private',
+#         '--force',
+#         '--no-toc',
+#     ]
+
+#     # See https://stackoverflow.com/a/30144019
+#     env = os.environ.copy()
+#     env["SPHINX_APIDOC_OPTIONS"] = 'members,special-members,private-members,undoc-members,show-inheritance'
+#     subprocess.check_call([cmd_path] + options, env=env)
+
+
+# def setup(app):
+#     app.connect('builder-inited', run_apidoc)
+
 
 # -- Options for manual page output ---------------------------------------
 
@@ -272,7 +331,6 @@ latex_elements = {
 
 # If true, show URL addresses after external links.
 #man_show_urls = False
-
 
 # -- Options for Texinfo output -------------------------------------------
 
@@ -294,101 +352,6 @@ latex_elements = {
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 #texinfo_no_detailmenu = False
 
-
-## BEFORE STARTING, LET'S LOAD THE CORRECT AIIDA DBENV
-# on_rtd is whether we are on readthedocs.org, this line of code grabbed
-# from docs.readthedocs.org
-# NOTE: it is needed to have these lines before load_dbenv()
-on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
-
-sys.path.append( os.path.join( os.path.split(__file__)[0],
-                                           os.pardir,os.pardir) )
-sys.path.append( os.path.join( os.path.split(__file__)[0],
-                                           os.pardir))
-
-os.environ['DJANGO_SETTINGS_MODULE'] = 'rtd_settings'
-
-if not on_rtd:  # only import and set the theme if we're building docs locally
-    try:
-        import sphinx_rtd_theme
-        html_theme = 'sphinx_rtd_theme'
-        html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
-    except ImportError:
-        # No sphinx_rtd_theme installed
-        pass
-    # Loading the dbenv. The backend should be fixed before compiling the
-    # documentation.
-    from aiida.backends.utils import load_dbenv, is_dbenv_loaded
-    if not is_dbenv_loaded():
-        load_dbenv()
-else:
-    # Back-end settings for readthedocs online documentation -
-    # we don't want to create a profile there
-    from aiida.backends import settings
-    settings.IN_DOC_MODE = True
-    settings.BACKEND = "django"
-    settings.AIIDADB_PROFILE = "default"
-
-
-
-
 # Warnings to ignore when using the -n (nitpicky) option
 # We should ignore any python built-in exception, for instance
-nitpick_ignore = [
-    ('py:exc', 'ArithmeticError'),
-    ('py:exc', 'AssertionError'),
-    ('py:exc', 'AttributeError'),
-    ('py:exc', 'BaseException'),
-    ('py:exc', 'BufferError'),
-    ('py:exc', 'DeprecationWarning'),
-    ('py:exc', 'EOFError'),
-    ('py:exc', 'EnvironmentError'),
-    ('py:exc', 'Exception'),
-    ('py:exc', 'FloatingPointError'),
-    ('py:exc', 'FutureWarning'),
-    ('py:exc', 'GeneratorExit'),
-    ('py:exc', 'IOError'),
-    ('py:exc', 'ImportError'),
-    ('py:exc', 'ImportWarning'),
-    ('py:exc', 'IndentationError'),
-    ('py:exc', 'IndexError'),
-    ('py:exc', 'KeyError'),
-    ('py:exc', 'KeyboardInterrupt'),
-    ('py:exc', 'LookupError'),
-    ('py:exc', 'MemoryError'),
-    ('py:exc', 'NameError'),
-    ('py:exc', 'NotImplementedError'),
-    ('py:exc', 'OSError'),
-    ('py:exc', 'OverflowError'),
-    ('py:exc', 'PendingDeprecationWarning'),
-    ('py:exc', 'ReferenceError'),
-    ('py:exc', 'RuntimeError'),
-    ('py:exc', 'RuntimeWarning'),
-    ('py:exc', 'StandardError'),
-    ('py:exc', 'StopIteration'),
-    ('py:exc', 'SyntaxError'),
-    ('py:exc', 'SyntaxWarning'),
-    ('py:exc', 'SystemError'),
-    ('py:exc', 'SystemExit'),
-    ('py:exc', 'TabError'),
-    ('py:exc', 'TypeError'),
-    ('py:exc', 'UnboundLocalError'),
-    ('py:exc', 'UnicodeDecodeError'),
-    ('py:exc', 'UnicodeEncodeError'),
-    ('py:exc', 'UnicodeError'),
-    ('py:exc', 'UnicodeTranslateError'),
-    ('py:exc', 'UnicodeWarning'),
-    ('py:exc', 'UserWarning'),
-    ('py:exc', 'VMSError'),
-    ('py:exc', 'ValueError'),
-    ('py:exc', 'Warning'),
-    ('py:exc', 'WindowsError'),
-    ('py:exc', 'ZeroDivisionError'),
-    ('py:obj', 'str'),
-    ('py:obj', 'list'),
-    ('py:obj', 'tuple'),
-    ('py:obj', 'int'),
-    ('py:obj', 'float'),
-    ('py:obj', 'bool'),
-    ('py:obj', 'Mapping'),
-]
+nitpick_ignore = []

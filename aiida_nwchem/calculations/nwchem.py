@@ -80,7 +80,7 @@ class NwchemCalculation(CalcJob):
         contains lists of files that need to be copied to the remote machine before job submission, as well as file
         lists that are to be retrieved after job completion.
         :param folder: a sandbox folder to temporarily write files on disk.
-        :return: :py:`~aiida.common.datastructures.CalcInfo` instance.
+        :return: `aiida.common.datastructures.CalcInfo` instance.
         """
 
         parameters = self.inputs.parameters.get_dict()

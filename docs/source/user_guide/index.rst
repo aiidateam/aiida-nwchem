@@ -1,11 +1,13 @@
 ============
-User's guide
+User guide
 ============
 
 .. toctree::
     :maxdepth: 3
 
-    basic
-    nwcpymatgen
+    features
+    installation
+    usage
+    examples
 
 

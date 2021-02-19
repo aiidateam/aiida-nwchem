@@ -149,10 +149,8 @@ class NwchemBaseParser(Parser):
     def separate_tasks(self, all_lines):
         """
         Slice the stdout in to sections according to the module used.
-
-        args: lines: all the lines in the output file
-        returns: task_types: a list of the tasks parsed
-                 task_lines_list: a list of lists or lines from each task
+        Returns a list of the tasks parsed and a list of lists containing
+        lines from each task
         """
 
 
@@ -386,7 +384,7 @@ class NwchemBaseParser(Parser):
         """
         Parse an energy task block
 
-        args: lines: the lines to parse
+        param: lines: the lines to parse
         """
         module_parser = getattr(self, 'parse_'+theory_type)
         result_dict = module_parser(task_lines)
@@ -399,7 +397,7 @@ class NwchemBaseParser(Parser):
         """
         Parse a geometry optimisation task block
 
-        args: lines: the lines to parse
+        params: lines: the lines to parse
         """
 
         result_dict = {'task':'geo-opt'}
@@ -501,9 +499,9 @@ class NwchemBaseParser(Parser):
         """
         Parse a frequency analysis task block
 
-        args: lines: the lines to parse
-        returns: task_dict : a dictionary of results for the task
-                 nodes     : the nodes created by parsing
+        param: lines: the lines to parse
+        returns: task_dict: a dictionary of results for the task
+        nodes: the nodes created by parsing
         """
 
         task_dict = {'task':'freq'}

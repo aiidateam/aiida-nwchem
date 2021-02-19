@@ -24,9 +24,6 @@
         ],
         "aiida.tests": [
             "nwchem.tcodexporter = aiida_nwchem.tests.tcodexporter"
-        ],
-        "aiida.tools.dbexporters.tcod_plugins": [
-            "nwchem.nwcpymatgen = aiida_nwchem.tools.dbexporters.tcod_plugins.nwcpymatgen:NwcpymatgenTcodtranslator"
         ]
     },
     "extras_require": {
@@ -43,9 +40,11 @@
             "aiida-tcod"
         ],
         "docs": [
-            "Sphinx",
-            "docutils",
-            "sphinx_rtd_theme"
+            "sphinx",
+            "sphinxcontrib-contentui",
+            "sphinxcontrib-details-directive; python_version>='3.0'",
+            "sphinx-rtd-theme",
+            "sphinxcontrib-napoleon"
         ]
     },
     "install_requires": [
