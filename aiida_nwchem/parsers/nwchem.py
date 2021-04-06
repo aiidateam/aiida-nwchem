@@ -36,8 +36,10 @@ class NwchemBaseParser(Parser):
     Currently supported modules:
     - SCF
     - DFT
+    - TDDFT
+    - NWPW Band
+    - TCE
     - Geo-opt
-    - Frequency analysis
 
     Multiple tasks are possible so we must parse each one.
     To simplify providence, only one task directive is allowed.
@@ -153,11 +155,14 @@ class NwchemBaseParser(Parser):
         lines from each task
         """
 
-
-        # State to track if we're in a task or not
-        in_task = False
         # List to hold all of the parsed task dictionaries
         task_list = []
+
+        task_dict = {
+            'task_type': None, # We do not know the task type yet
+            'theory_type': None, # We also do not yet know the theory used
+            'lines': [],
+        }
 
         for index, line in enumerate(all_lines):
 
@@ -167,54 +172,48 @@ class NwchemBaseParser(Parser):
                 #raise OutputParsingError("NWChem did not finish properly. Reported error:\n"
                 #                         "{}".format(line))
 
-            if re.match(r'^\s*NWChem Input Module\s*$', line):
-                # We're inside a task block
-                in_task = True
-                first_line = index
-                task_dict = {
-                    'task_type': None, # We do not know the task type yet
-                    'theory_type': None, # We also do not yet know the theory used
-                    'lines': [],
-                }
-
+            # Determine what general kind of task we have - e.g. energy, optimisation, etc.
+            if re.match(r'^\s*NWChem Geometry Optimization\s*$',line):
+                task_dict['task_type'] = 'geoopt'
+                continue
+            elif re.match(r'^\s*NWChem Nuclear Hessian and Frequency Analysis\s*$',line):
+                task_dict['task_type'] = 'freq'
                 continue
 
-            if in_task:
-                # Determine what general kind of task we have - e.g. energy, optimisation, etc.
-                if re.match(r'^\s*NWChem Geometry Optimization\s*$',line):
-                    task_dict['task_type'] = 'geoopt'
-                    continue
-                elif re.match(r'^\s*NWChem Nuclear Hessian and Frequency Analysis\s*$',line):
-                    task_dict['task_type'] = 'freq'
-                    continue
+            # Determine the theory used - eg. HF, DFT, etc.
+            if re.match(r'^\s*NWChem SCF Module\s*$',line):
+                task_dict['theory_type'] = 'scf'
+                first_line = index
+                continue
+            elif re.match(r'^\s*NWChem DFT Module\s*$',line):
+                task_dict['theory_type'] = 'dft'
+                first_line = index
+                continue
+            elif re.match(r'^\s*NWChem TDDFT Module\s*$',line):
+                task_dict['theory_type'] = 'tddft'
+                first_line = index
+                continue
+            elif re.match(r'^[\s\*]*NWPW BAND Calculation[\s\*]*$',line):
+                task_dict['theory_type'] = 'nwpw_band'
+                first_line = index
+                continue
+            elif re.match(r'^[\s]+NWChem Extensible Many-Electron Theory Module[\s]*$', line):
+                task_dict['theory_type'] = 'tce'
+                first_line = index
+                continue
 
-                # Determine the theory used - eg. HF, DFT, etc.
-                if re.match(r'^\s*NWChem SCF Module\s*$',line):
-                    task_dict['theory_type'] = 'scf'
-                    continue
-                elif re.match(r'^\s*NWChem DFT Module\s*$',line):
-                    task_dict['theory_type'] = 'dft'
-                    continue
-                elif re.match(r'^[\s\*]*NWPW BAND Calculation[\s\*]*$',line):
-                    task_dict['theory_type'] = 'nwpw_band'
-                    continue
-                elif re.match(r'^[\s]+NWChem Extensible Many-Electron Theory Module[\s]*$', line):
-                    task_dict['theory_type'] = 'tce'
-                    continue
+            # Check if we've hit the end of the task block
+            if re.match(r'^ Task  times  cpu:\s+[0-9.]+s\s+wall:\s+[0-9.]+s$', line):
+                # If we didn't find a task, then this must be an energy type calculation (or another that we do not support!)
+                if task_dict['task_type'] is None:
+                    task_dict['task_type'] = 'energy'
+                last_line = index
+                task_dict['lines'] = all_lines[first_line:last_line+1]
+                task_list.append(task_dict)
 
-                # Check if we've hit the end of the task block
-                if re.match(r'^ Task  times  cpu:\s+[0-9.]+s\s+wall:\s+[0-9.]+s$', line):
-                    in_task = False
-                    # If we didn't find a task, then this must be an energy type calculation (or another that we do not support!)
-                    if task_dict['task_type'] is None:
-                        task_dict['task_type'] = 'energy'
-                    last_line = index
-                    task_dict['lines'] = all_lines[first_line:last_line+1]
-                    task_list.append(task_dict)
-
-                # If we're really finished, return the task list:
-                    if re.match(r'^\s+CITATION\s+$', line):
-                        break
+            # If we're really finished, return the task list:
+                if re.match(r'^\s+CITATION\s+$', line):
+                    break
 
         return task_list
 
@@ -288,6 +287,38 @@ class NwchemBaseParser(Parser):
 
         return result_dict
 
+    def parse_tddft(self, lines):
+        """
+        Parse a TDDFT task block
+
+        args: lines: the lines to parse
+        """
+
+        result_dict = {'theory':'tddft'}
+        state = None
+
+        for line in lines:
+
+            result = re.match(r'\s*Wavefunction type:\s*([A-z\s]*).\s*$',line)
+            if result:
+                result_dict['wavefunction'] = result.group(1)
+
+            if re.match(r'^\s*Ground state energy', line):
+                state = 'final-results'
+            if state == 'final-results':
+                result = re.match(r'^\s*([^=]+?)\s*=\s*([\-\d\.]+)$',line)
+                if result:
+                    key = re.sub(r'[^a-zA-Z0-9]+', '_', result.group(1).lower())
+                    result_dict[key] = result.group(2)
+
+            # End of task
+            if re.match('^ Task  times  cpu:', line):
+                result = re.match(r'^ Task  times  cpu:\s*([\d\.\d]+)s\s*wall:\s*([\d\.\d]+)s', line)
+                result_dict['cpu_time'] = result.group(1)
+                result_dict['wall_time'] = result.group(2)
+                break
+
+        return result_dict
 
     def parse_nwpw_band(self, lines):
         """
