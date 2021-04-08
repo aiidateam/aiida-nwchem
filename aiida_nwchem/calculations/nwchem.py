@@ -56,6 +56,8 @@ class NwchemCalculation(CalcJob):
         spec.default_output_node = 'output_parameters'
 
         # Standard exceptions
+        spec.exit_code(201, 'POINT_CHARGE_LIST_INCORRECT',
+            message='One of the point charges is not formatted correctly.')
         spec.exit_code(301, 'ERROR_NO_RETRIEVED_TEMPORARY_FOLDER',
             message='The retrieved temporary folder could not be accessed.')
         spec.exit_code(302, 'ERROR_OUTPUT_STDOUT_MISSING',
@@ -90,8 +92,10 @@ class NwchemCalculation(CalcJob):
         basis = parameters.pop('basis',None)
         symmetry = parameters.pop('symmetry', None)
         set_commands = parameters.pop('set', None)
+        unset_commands = parameters.pop('unset', None)
         task = parameters.pop('task', None)
         add_cell = self.inputs.add_cell
+        point_charges = parameters.pop('point_charges', None)
 
         atom_kinds = []
         atom_coords_cartesian = []
@@ -135,6 +139,12 @@ class NwchemCalculation(CalcJob):
                 atom_coords = atom_coords_cartesian
             for kind, coords in zip(atom_kinds, atom_coords):
                 f.write('  {} {} {} {}\n'.format(kind, *coords))
+            if point_charges:
+                for charge in point_charges:
+                    if len(charge) != 4:
+                        return self.exit_codes.POINT_CHARGE_LIST_INCORRECT
+                    else:
+                        f.write('  Bq {} {} {} {}\n'.format(*charge))
             f.write('end\n')
             # Basis
             if basis:
@@ -142,6 +152,11 @@ class NwchemCalculation(CalcJob):
                 for atom_type,basis_name in basis.items():
                     f.write('  {} {}\n'.format(atom_type,basis_name))
                 f.write('end\n')
+
+            # Unset commands
+            if unset_commands:
+                for key, value in unset_commands.items():
+                    f.write('unset {} {}\n'.format(key,value))
 
             # Additional free-form parameters
             def convert_parameters(parameters, indent):
