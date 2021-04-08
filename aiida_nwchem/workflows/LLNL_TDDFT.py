@@ -3,11 +3,7 @@ from aiida.plugins import CalculationFactory, WorkflowFactory, DataFactory
 from aiida.engine import submit, WorkChain, ToContext, if_, while_, append_
 from aiida.common import AttributeDict
 
-from aiida_quantumespresso.workflows.protocols.utils import ProtocolMixin
-from aiida_quantumespresso.utils.mapping import prepare_process_inputs
-
-PwCalculation = CalculationFactory('quantumespresso.pw')
-PwBaseWorkChain = WorkflowFactory('quantumespresso.pw.base')
+NwchemCalculation = CalculationFactory('nwchem.nwchem')
 
 
 class LLNLSpectroscopyWorkChain(WorkChain):
@@ -34,7 +30,7 @@ class LLNLSpectroscopyWorkChain(WorkChain):
             namespace_options={'help': 'Inputs from the NwchemCalculation for ligand only calculation.'})
         spec.expose_inputs(NwchemCalculation, namespace = 'full',
             namespace_options={'help': 'Inputs from the NwchemCalculation for combined cage and ligands calculation.'})
-        spec.expose_inputs(NwchemCalculation, namespace = 'full_uhf',
+        spec.expose_inputs(NwchemCalculation, namespace = 'uhf',
             namespace_options={'help': 'Inputs from the NwchemCalculation for full with UHF settings.'})
         spec.expose_inputs(NwchemCalculation, namespace = 'dft',
             namespace_options={'help': 'Inputs from the NwchemCalculation for dft calculation.'})
@@ -54,44 +50,202 @@ class LLNLSpectroscopyWorkChain(WorkChain):
             cls.results,
         )
         spec.expose_outputs(PwBaseWorkChain)
-        spec.exit_code(401, 'ERROR_SUB_PROCESS_FAILED_LOW',
-            message='the low settings failed for relax')
-        spec.exit_code(402, 'ERROR_SUB_PROCESS_FAILED_HIGH',
-            message='the high settings failed for relax')
+        spec.exit_code(401, 'NO_CHARGE_SPECIFIED',
+            message='must specify a charge for the builder')
+        spec.exit_code(402, 'NO_ATOM_FOUND',
+            message='no atoms found when parsing structure for elements other than "H" and "O"')
+        spec.exit_code(403, 'TOO_MANY_ATOMS_FOUND',
+            message='found more than one atom in structure when parsing for cage calculation')
 
     @classmethod
     def get_builder_from_protocol(
-        cls, code, structure, protocol=None, overrides=None, **kwargs
+        cls, code, structure, charge=None, cage_style='octahedra', overrides=None, **kwargs
     ):
 
-        args = (code, structure, protocol)
+        if charge == None:
+            return self.exit_codes.NO_CHARGE_SPECIFIED
+
+        args = (code, structure)
 
         builder = cls.get_builder()
 
-        low = PwBaseWorkChain.get_builder_from_protocol(*args, overrides=None, **kwargs)
-        low['pw'].pop('structure',None)
-        low.pop('clean_workdir',None)
-        low.pw.parameters['CONTROL']['calculation'] = 'vc-relax'
-        low.pw.parameters['SYSTEM']['ecutwfc'] = low.pw.parameters['SYSTEM']['ecutwfc'] * 0.8
-        low.pw.parameters['SYSTEM']['ecutrho'] = low.pw.parameters['SYSTEM']['ecutrho'] * 0.8
-        low.kpoints_distance = low.kpoints_distance / 0.8
+        cage = cls.get_builder()
+        ligand = cls.get_builder()
+        full = cls.get_builder()
+        uhf = cls.get_builder()
+        dft = cls.get_builder()
+        tddft = cls.get_builder()
 
-        high = PwBaseWorkChain.get_builder_from_protocol(*args, overrides=None, **kwargs)
-        high['pw'].pop('structure',None)
-        high.pop('clean_workdir',None)
-        high.pw.parameters['CONTROL']['calculation'] = 'vc-relax'
+        # Find which atom
+        StructureData = DataFactory('structure')
+        cage_structure = StructureData()
+        ligand_structure = StructureData()
+        for site in structure.sites:
+            site_dict = site.get_raw()
+            kind = site_dict['kind_name']
+            pos = site_dict['position']
+            if kind != 'H' and kind != 'O':
+                cage_kind = kind
+                cage_pos = pos
+                cage_structure.append_atom(symbols=kind,position=pos)
+                ligand_charge = [[pos[0],pos[1],pos[2],charge]]
+            elif kind == 'H' or kind == 'O':
+                ligand_structure.append_atom(symbols=kind,position=pos)
 
-        builder.low = low
-        builder.high = high
+        # Check that there is only one atom
+        if len(cage_structure.sites) < 1:
+            return self.exit_codes.NO_ATOM_FOUND
+        elif len(cage_structure.sites) > 1:
+            return self.exit_codes.TOO_MANY_ATOMS_FOUND
+        else:
+            cage.structure = cage_structure
+            ligand.structure = ligand_structure
+            
+        # Setup cage charge based on cage_style
+        cage_charge = get_cage_charge(charge,cage_style)
+        point_charges = get_point_charges(cage_style,cage_pos)
+
+        # Setup caged parameters
+        Dict = DataFactory('dict')
+        cage.parameters = Dict(dict={
+            'basis spherical':{
+                'H' : 'library aug-cc-pVDZ',
+                'O' : 'library aug-cc-pVDZ',
+                cage_kind : 'library LANL08+'
+            }
+            'set':{
+                'tolguess': 1e-9
+             },
+            'charge' : cage_charge,
+            'point_charges' : point_charges,
+            'scf' : {
+                'triplet':'',
+                'maxiter' : 100,
+                'vectors' : 'atomic output {0}.movecs'.format(cage_kind.lower())
+            },
+            'task' : 'scf energy'
+        }
+
+        ligand.parameters = Dict(dict={
+            'basis spherical':{
+                'H' : 'library aug-cc-pVDZ',
+                'O' : 'library aug-cc-pVDZ',
+                cage_kind : 'library LANL08+'
+            }
+            'set':{
+                'tolguess': 1e-9
+             },
+            'charge' : charge,
+            'point_charges' : ligand_charge,
+            'scf' : {
+                'singlet':'',
+                'maxiter' : 100,
+                'vectors' : 'atomic output ligand.movecs'
+            },
+            'task' : 'scf energy'
+        }
+        
+        # Setup full calculation information
+        full.structure = structure
+        full.parameters = Dict(dict={
+            'basis spherical':{
+                'H' : 'library aug-cc-pVDZ',
+                'O' : 'library aug-cc-pVDZ',
+                cage_kind : 'library LANL08+'
+            }
+            'set':{
+                'tolguess': 1e-9
+             },
+            'charge' : charge,
+            'scf' : {
+                'triplet':'',
+                'maxiter' : 100,
+                'vectors' : 'input fragment {0}.movecs ligand.movecs output hf.movecs'.format(cage_kind.lower())
+            },
+            'task' : 'scf energy'
+        }
+           
+        # Setup full calculation with UHF
+        uhf.parameters = Dict(dict={
+            'scf' : {
+                'vectors' : 'input hf.movecs output uhf.movecs',
+                'triplet; uhf' : ''
+                'maxiter' : 100
+            },
+            'task' : 'scf energy'
+        }    
+        
+        # DFT parameters
+        dft.parameters = Dict(dict={
+            'driver' : {
+                'maxiter' : 500
+            },
+            'cosmo' : {
+                'dielec' : 78.0,
+                'rsolv' : 0.50
+            },
+            'dft' : {
+                'iterations' : 500,
+                'xc' : 'xbnl07 0.90 lyp 1.00 hfexch 1.00',
+                'cam 0.33 cam_alpha 0.0 cam_beta 1.0' : '',
+                'direct' : '',
+                'vectors' : 'input uhf.movecs output dft.movecs',
+                'mult' : 3,
+                'mulliken' : ''
+            },
+            'task' : 'dft energy'
+        }    
+
+        # TDDFT parameters
+        tddft.parameters = Dict(dict={
+            'dft' : {
+                'iterations' : 500,
+                'xc' : 'xbnl07 0.90 lyp 1.00 hfexch 1.00',
+                'cam 0.33 cam_alpha 0.0 cam_beta 1.0' : '',
+                'direct' : '',
+                'vectors' : 'input uhf.movecs output dft.movecs',
+                'mult' : 3,
+                'mulliken' : ''
+            },
+            'tddft' : {
+                'cis' : '',
+                'NOSINGLET' : '',
+                'nroots' : 20,
+                'maxiter' : 1000,
+                'freeze' : 17
+            },
+            'task' : 'tddft energy'
+        }    
+
+        builder.cage = cage
+        builder.ligand = ligand
+        builder.full = full
+        builder.uhf = uhf
+        builder.dft = dft
+        builder.tddft = tddft
         builder.structure = structure
 
         return builder
 
+    def get_cage_charge(self,charge,cage_style):
+        
+        if cage_style == 'octahedra':
+            return charge - 6
 
-    def setup(self):
-        self.ctx.low_not_finished = True
-        self.ctx.high_not_finished = True
-        print('Finished setup')
+    def get_point_charges(self,cage_style,position):
+
+        point_charges = []
+
+        if cage_style == 'octahedra':
+            
+            point_charges.append(np.array(position) + np.array([2,0,0]))
+            point_charges.append(np.array(position) + np.array([0,2,0]))
+            point_charges.append(np.array(position) + np.array([0,0,2]))
+            point_charges.append(np.array(position) + np.array([-2,0,0]))
+            point_charges.append(np.array(position) + np.array([0,-2,0]))
+            point_charges.append(np.array(position) + np.array([0,0,-2]))
+
+        return point_charges
 
     def low_not_finished(self):
  
