@@ -144,7 +144,7 @@ class NwchemCalculation(CalcJob):
                     if len(charge) != 4:
                         return self.exit_codes.POINT_CHARGE_LIST_INCORRECT
                     else:
-                        f.write('  Bq {} {} {} {}\n'.format(*charge))
+                        f.write('  Bq {} {} {} charge {}\n'.format(*charge))
             f.write('end\n')
             # Basis
             if basis:
