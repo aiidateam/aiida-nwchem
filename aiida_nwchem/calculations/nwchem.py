@@ -90,6 +90,7 @@ class NwchemCalculation(CalcJob):
         basis = parameters.pop('basis',None)
         symmetry = parameters.pop('symmetry', None)
         set_commands = parameters.pop('set', None)
+        unset_commands = parameters.pop('unset', None)
         task = parameters.pop('task', None)
         add_cell = self.inputs.add_cell
 
@@ -142,6 +143,11 @@ class NwchemCalculation(CalcJob):
                 for atom_type,basis_name in basis.items():
                     f.write('  {} {}\n'.format(atom_type,basis_name))
                 f.write('end\n')
+
+            # Unset commands
+            if unset_commands:
+                for key, value in unset_commands.items():
+                    f.write('unset {} {}\n'.format(key,value))
 
             # Additional free-form parameters
             def convert_parameters(parameters, indent):
