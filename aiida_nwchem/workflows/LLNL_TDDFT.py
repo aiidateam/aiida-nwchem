@@ -28,14 +28,19 @@ class LLNLSpectroscopyWorkChain(WorkChain):
         Define the parameters and workflow
         """
         super().define(spec)
-        spec.expose_inputs(PwBaseWorkChain, namespace='low',
-            exclude=('clean_workdir','pw.structure','pw.parent_folder'),
-            namespace_options={'help': 'Inputs for the `PwBaseWorkChain` for the low relax.'})
-        spec.expose_inputs(PwBaseWorkChain, namespace='high',
-            exclude=('clean_workdir','pw.structure','pw.parent_folder'),
-            namespace_options={'required':True, 'populate_defaults': False,
-                'help': 'Inputs for the `PwBaseWorkChain` for the high relax.'})
-        spec.input('structure', valid_type=orm.StructureData, help='The initial structure.')
+        spec.expose_inputs(NwchemCalculation, namespace = 'cage',
+            namespace_options={'help': 'Inputs from the NwchemCalculation for cage calculation.'})
+        spec.expose_inputs(NwchemCalculation, namespace = 'ligands',
+            namespace_options={'help': 'Inputs from the NwchemCalculation for ligand only calculation.'})
+        spec.expose_inputs(NwchemCalculation, namespace = 'full',
+            namespace_options={'help': 'Inputs from the NwchemCalculation for combined cage and ligands calculation.'})
+        spec.expose_inputs(NwchemCalculation, namespace = 'full_uhf',
+            namespace_options={'help': 'Inputs from the NwchemCalculation for full with UHF settings.'})
+        spec.expose_inputs(NwchemCalculation, namespace = 'dft',
+            namespace_options={'help': 'Inputs from the NwchemCalculation for dft calculation.'})
+        spec.expose_inputs(NwchemCalculation, namespace = 'tddft',
+            namespace_options={'help': 'Inputs from the NwchemCalculation for tddft calculation.'})
+
         spec.outline(
             cls.setup,
             while_(cls.low_not_finished)(
