@@ -20,8 +20,7 @@
             "nwchem.nwchem = aiida_nwchem.parsers.nwchem:NwchemBaseParser"
         ],
         "aiida.workflows": [
-            "nwchem.base = aiida_nwchem.workflows.base:NwchemBaseWorkChain",
-            "nwchem.llnl_tddft = aiida_nwchem.workflows.LLNL_TDDFT:LLNLSpectroscopyWorkChain"
+            "nwchem.base = aiida_nwchem.workflows.base:NwchemBaseWorkChain"
         ],
         "aiida.tests": [
             "nwchem.tcodexporter = aiida_nwchem.tests.tcodexporter"
