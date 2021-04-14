@@ -155,7 +155,6 @@ class NwchemBaseParser(Parser):
         lines from each task
         """
 
-
         # State to track if we're in a task or not
         in_task = False
         # List to hold all of the parsed task dictionaries
@@ -168,7 +167,7 @@ class NwchemBaseParser(Parser):
                 self.parse_errors(all_lines, index)
                 #raise OutputParsingError("NWChem did not finish properly. Reported error:\n"
                 #                         "{}".format(line))
-
+            
             if re.match(r'^\s*NWChem Input Module\s*$', line):
                 # We're inside a task block
                 in_task = True
@@ -207,19 +206,18 @@ class NwchemBaseParser(Parser):
                     task_dict['theory_type'] = 'tce'
                     continue
 
-                # Check if we've hit the end of the task block
-                if re.match(r'^ Task  times  cpu:\s+[0-9.]+s\s+wall:\s+[0-9.]+s$', line):
-                    in_task = False
-                    # If we didn't find a task, then this must be an energy type calculation (or another that we do not support!)
-                    if task_dict['task_type'] is None:
-                        task_dict['task_type'] = 'energy'
-                    last_line = index
-                    task_dict['lines'] = all_lines[first_line:last_line+1]
-                    task_list.append(task_dict)
+            # Check if we've hit the end of the task block
+            if re.match(r'^ Task  times  cpu:\s+[0-9.]+s\s+wall:\s+[0-9.]+s$', line):
+                # If we didn't find a task, then this must be an energy type calculation (or another that we do not support!)
+                if task_dict['task_type'] is None:
+                    task_dict['task_type'] = 'energy'
+                last_line = index
+                task_dict['lines'] = all_lines[first_line:last_line+1]
+                task_list.append(task_dict)
 
-                # If we're really finished, return the task list:
-                    if re.match(r'^\s+CITATION\s+$', line):
-                        break
+            # If we're really finished, return the task list:
+                if re.match(r'^\s+CITATION\s+$', line):
+                    break
 
         return task_list
 
@@ -327,6 +325,7 @@ class NwchemBaseParser(Parser):
                 result_dict['cpu_time'] = result.group(1)
                 result_dict['wall_time'] = result.group(2)
                 break
+
 
             # Parse excitation energies
             if 'Root' in line:
