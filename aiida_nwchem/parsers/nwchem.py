@@ -36,8 +36,10 @@ class NwchemBaseParser(Parser):
     Currently supported modules:
     - SCF
     - DFT
+    - TDDFT
+    - NWPW Band
+    - TCE
     - Geo-opt
-    - Frequency analysis
 
     Multiple tasks are possible so we must parse each one.
     To simplify providence, only one task directive is allowed.
@@ -195,6 +197,9 @@ class NwchemBaseParser(Parser):
                 elif re.match(r'^\s*NWChem DFT Module\s*$',line):
                     task_dict['theory_type'] = 'dft'
                     continue
+                elif re.match(r'^\s*NWChem TDDFT Module\s*$',line):
+                    task_dict['theory_type'] = 'tddft'
+                    continue
                 elif re.match(r'^[\s\*]*NWPW BAND Calculation[\s\*]*$',line):
                     task_dict['theory_type'] = 'nwpw_band'
                     continue
@@ -288,6 +293,53 @@ class NwchemBaseParser(Parser):
 
         return result_dict
 
+    def parse_tddft(self, lines):
+        """
+        Parse a TDDFT task block
+
+        args: lines: the lines to parse
+        """
+
+        result_dict = {'theory':'tddft'}
+        state = None
+
+        transition_energies = []
+        dipole_oscillator_strengths = []
+
+        for line in lines:
+
+            result = re.match(r'\s*Wavefunction type:\s*([A-z\s]*).\s*$',line)
+            if result:
+                result_dict['wavefunction'] = result.group(1)
+
+            if re.match(r'^\s*Ground state energy', line):
+                state = 'final-results'
+            if state == 'final-results':
+                result = re.match(r'^\s*([^=]+?)\s*=\s*([\-\d\.]+)$',line)
+                if result:
+                    key = re.sub(r'[^a-zA-Z0-9]+', '_', result.group(1).lower())
+                    result_dict[key] = result.group(2)
+
+            # End of task
+            if re.match('^ Task  times  cpu:', line):
+                result = re.match(r'^ Task  times  cpu:\s*([\d\.\d]+)s\s*wall:\s*([\d\.\d]+)s', line)
+                result_dict['cpu_time'] = result.group(1)
+                result_dict['wall_time'] = result.group(2)
+                break
+
+            # Parse excitation energies
+            if 'Root' in line:
+                transition_energies.append(float(line.split()[-2]))
+            if 'Dipole Oscillator Strength' in line:
+                dipole_oscillator_strengths.append(float(line.split()[-1]))
+
+        if len(excitation_energies) == len(dipole_oscillator_strengths):
+            result_dict['transition_energies'] = transition_energies
+            result_dict['dipole_oscillator_strengths'] = dipole_oscillator_strengths
+        else:
+            self.report(f'Excitation energies list does not match the length of the dipole oscillator strengths')
+
+        return result_dict
 
     def parse_nwpw_band(self, lines):
         """

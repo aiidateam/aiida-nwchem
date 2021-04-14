@@ -3,6 +3,8 @@ from aiida.plugins import CalculationFactory, WorkflowFactory, DataFactory
 from aiida.engine import submit, WorkChain, ToContext, if_, while_, append_
 from aiida.common import AttributeDict
 
+import numpy as np
+
 NwchemCalculation = CalculationFactory('nwchem.nwchem')
 
 
@@ -26,10 +28,10 @@ class LLNLSpectroscopyWorkChain(WorkChain):
         super().define(spec)
         spec.expose_inputs(NwchemCalculation, namespace = 'cage',
             namespace_options={'help': 'Inputs from the NwchemCalculation for cage calculation.'})
-        spec.expose_inputs(NwchemCalculation, namespace = 'ligands',
+        spec.expose_inputs(NwchemCalculation, namespace = 'ligand',
             namespace_options={'help': 'Inputs from the NwchemCalculation for ligand only calculation.'})
         spec.expose_inputs(NwchemCalculation, namespace = 'full',
-            namespace_options={'help': 'Inputs from the NwchemCalculation for combined cage and ligands calculation.'})
+            namespace_options={'help': 'Inputs from the NwchemCalculation for combined cage and ligand calculation.'})
         spec.expose_inputs(NwchemCalculation, namespace = 'uhf',
             namespace_options={'help': 'Inputs from the NwchemCalculation for full with UHF settings.'})
         spec.expose_inputs(NwchemCalculation, namespace = 'dft',
@@ -38,24 +40,45 @@ class LLNLSpectroscopyWorkChain(WorkChain):
             namespace_options={'help': 'Inputs from the NwchemCalculation for tddft calculation.'})
 
         spec.outline(
-            cls.setup,
-            while_(cls.low_not_finished)(
-                cls.run_low,
-                cls.check_low,
-            ),
-            while_(cls.high_not_finished)(
-                cls.run_high,
-                cls.check_high
-            ),
+            cls.run_cage,
+            cls.check_cage,
+
+            cls.run_ligand,
+            cls.check_ligand,
+
+            cls.run_full,
+            cls.check_full,
+
+            cls.run_uhf,
+            cls.check_uhf,
+
+            cls.run_dft,
+            cls.check_dft,
+
+            cls.run_tddft,
+            cls.check_tddft,
+
             cls.results,
         )
-        spec.expose_outputs(PwBaseWorkChain)
+        spec.expose_outputs(NwchemCalculation)
         spec.exit_code(401, 'NO_CHARGE_SPECIFIED',
             message='must specify a charge for the builder')
         spec.exit_code(402, 'NO_ATOM_FOUND',
             message='no atoms found when parsing structure for elements other than "H" and "O"')
         spec.exit_code(403, 'TOO_MANY_ATOMS_FOUND',
             message='found more than one atom in structure when parsing for cage calculation')
+        spec.exit_code(404, 'CAGE_FAILED',
+            message='cage calculation failed')
+        spec.exit_code(405, 'LIGAND_FAILED',
+            message='ligand calculation failed')
+        spec.exit_code(406, 'FULL_FAILED',
+            message='full calculation failed')
+        spec.exit_code(407, 'UHF_FAILED',
+            message='uhf calculation failed')
+        spec.exit_code(408, 'DFT_FAILED',
+            message='dft calculation failed')
+        spec.exit_code(409, 'TDDFT_FAILED',
+            message='tddft calculation failed')
 
     @classmethod
     def get_builder_from_protocol(
@@ -63,18 +86,11 @@ class LLNLSpectroscopyWorkChain(WorkChain):
     ):
 
         if charge == None:
-            return self.exit_codes.NO_CHARGE_SPECIFIED
+            return cls.exit_codes.NO_CHARGE_SPECIFIED
 
         args = (code, structure)
 
         builder = cls.get_builder()
-
-        cage = cls.get_builder()
-        ligand = cls.get_builder()
-        full = cls.get_builder()
-        uhf = cls.get_builder()
-        dft = cls.get_builder()
-        tddft = cls.get_builder()
 
         # Find which atom
         StructureData = DataFactory('structure')
@@ -94,44 +110,67 @@ class LLNLSpectroscopyWorkChain(WorkChain):
 
         # Check that there is only one atom
         if len(cage_structure.sites) < 1:
-            return self.exit_codes.NO_ATOM_FOUND
+            return cls.exit_codes.NO_ATOM_FOUND
         elif len(cage_structure.sites) > 1:
-            return self.exit_codes.TOO_MANY_ATOMS_FOUND
+            return cls.exit_codes.TOO_MANY_ATOMS_FOUND
         else:
-            cage.structure = cage_structure
-            ligand.structure = ligand_structure
+            builder.cage.structure = cage_structure
+            builder.ligand.structure = ligand_structure
             
         # Setup cage charge based on cage_style
-        cage_charge = get_cage_charge(charge,cage_style)
-        point_charges = get_point_charges(cage_style,cage_pos)
+        cage_charge = cls.get_cage_charge(charge,cage_style)
+        point_charges = cls.get_point_charges(cage_style,cage_pos)
+
+        # Setup default metadata
+        Dict = DataFactory('dict')
+        metadata = {
+            'options' : {
+                'resources' : {
+                    'num_machines' : 4
+                },
+                'max_wallclock_seconds' : 30*60,
+                'queue_name' : 'pdebug',
+                'account' : 'corrctl'
+            }
+        }
+ 
 
         # Setup caged parameters
-        Dict = DataFactory('dict')
-        cage.parameters = Dict(dict={
+        builder.cage.code = code
+        builder.cage.metadata = metadata
+        builder.cage.parameters = Dict(dict={
+
             'basis spherical':{
                 'H' : 'library aug-cc-pVDZ',
                 'O' : 'library aug-cc-pVDZ',
                 cage_kind : 'library LANL08+'
-            }
+            },
+
             'set':{
                 'tolguess': 1e-9
              },
+
             'charge' : cage_charge,
+
             'point_charges' : point_charges,
+
             'scf' : {
                 'triplet':'',
                 'maxiter' : 100,
                 'vectors' : 'atomic output {0}.movecs'.format(cage_kind.lower())
             },
-            'task' : 'scf energy'
-        }
 
-        ligand.parameters = Dict(dict={
+            'task' : 'scf energy'
+        })
+
+        builder.ligand.code = code
+        builder.ligand.metadata = metadata
+        builder.ligand.parameters = Dict(dict={
             'basis spherical':{
                 'H' : 'library aug-cc-pVDZ',
                 'O' : 'library aug-cc-pVDZ',
                 cage_kind : 'library LANL08+'
-            }
+            },
             'set':{
                 'tolguess': 1e-9
              },
@@ -143,16 +182,18 @@ class LLNLSpectroscopyWorkChain(WorkChain):
                 'vectors' : 'atomic output ligand.movecs'
             },
             'task' : 'scf energy'
-        }
+        })
         
         # Setup full calculation information
-        full.structure = structure
-        full.parameters = Dict(dict={
+        builder.full.code = code
+        builder.full.metadata = metadata
+        builder.full.structure = structure
+        builder.full.parameters = Dict(dict={
             'basis spherical':{
                 'H' : 'library aug-cc-pVDZ',
                 'O' : 'library aug-cc-pVDZ',
                 cage_kind : 'library LANL08+'
-            }
+            },
             'set':{
                 'tolguess': 1e-9
              },
@@ -163,20 +204,28 @@ class LLNLSpectroscopyWorkChain(WorkChain):
                 'vectors' : 'input fragment {0}.movecs ligand.movecs output hf.movecs'.format(cage_kind.lower())
             },
             'task' : 'scf energy'
-        }
+        })
            
         # Setup full calculation with UHF
-        uhf.parameters = Dict(dict={
+        builder.uhf.code = code
+        builder.uhf.metadata = metadata
+        builder.uhf.structure = structure
+        builder.uhf.parameters = Dict(dict={
+            'restart' : True,
             'scf' : {
                 'vectors' : 'input hf.movecs output uhf.movecs',
-                'triplet; uhf' : ''
+                'triplet; uhf' : '',
                 'maxiter' : 100
             },
             'task' : 'scf energy'
-        }    
+        })    
         
         # DFT parameters
-        dft.parameters = Dict(dict={
+        builder.dft.code = code
+        builder.dft.metadata = metadata
+        builder.dft.structure = structure
+        builder.dft.parameters = Dict(dict={
+            'restart' : True,
             'driver' : {
                 'maxiter' : 500
             },
@@ -194,10 +243,14 @@ class LLNLSpectroscopyWorkChain(WorkChain):
                 'mulliken' : ''
             },
             'task' : 'dft energy'
-        }    
+        })   
 
         # TDDFT parameters
-        tddft.parameters = Dict(dict={
+        builder.tddft.code = code
+        builder.tddft.metadata = metadata
+        builder.tddft.structure = structure
+        builder.tddft.parameters = Dict(dict={
+            'restart' : True,
             'dft' : {
                 'iterations' : 500,
                 'xc' : 'xbnl07 0.90 lyp 1.00 hfexch 1.00',
@@ -215,98 +268,176 @@ class LLNLSpectroscopyWorkChain(WorkChain):
                 'freeze' : 17
             },
             'task' : 'tddft energy'
-        }    
-
-        builder.cage = cage
-        builder.ligand = ligand
-        builder.full = full
-        builder.uhf = uhf
-        builder.dft = dft
-        builder.tddft = tddft
-        builder.structure = structure
+        })   
 
         return builder
 
-    def get_cage_charge(self,charge,cage_style):
+    def get_cage_charge(charge,cage_style):
         
         if cage_style == 'octahedra':
             return charge - 6
 
-    def get_point_charges(self,cage_style,position):
+    def get_point_charges(cage_style,position):
 
         point_charges = []
 
         if cage_style == 'octahedra':
             
-            point_charges.append(np.array(position) + np.array([2,0,0]))
-            point_charges.append(np.array(position) + np.array([0,2,0]))
-            point_charges.append(np.array(position) + np.array([0,0,2]))
-            point_charges.append(np.array(position) + np.array([-2,0,0]))
-            point_charges.append(np.array(position) + np.array([0,-2,0]))
-            point_charges.append(np.array(position) + np.array([0,0,-2]))
+            point_charges.append((np.array(position) + np.array([2,0,0])).tolist() + [-1])
+            point_charges.append((np.array(position) + np.array([0,2,0])).tolist() + [-1])
+            point_charges.append((np.array(position) + np.array([0,0,2])).tolist() + [-1])
+            point_charges.append((np.array(position) + np.array([-2,0,0])).tolist() + [-1])
+            point_charges.append((np.array(position) + np.array([0,-2,0])).tolist() + [-1])
+            point_charges.append((np.array(position) + np.array([0,0,-2])).tolist() + [-1])
 
         return point_charges
 
-    def low_not_finished(self):
+    def run_cage(self):
+
+        inputs = AttributeDict(self.exposed_inputs(NwchemCalculation,'cage'))
+        parameters = self.inputs.cage.parameters.get_dict()
+        inputs.metadata = self.inputs.cage.metadata
+        inputs.metadata.call_link_label = 'cage'
+        inputs.code = self.inputs.cage.code
+        inputs.parameters = orm.Dict(dict=parameters)
+        inputs.structure = self.inputs.cage.structure
+
+        future_cage = self.submit(NwchemCalculation,**inputs)
+        self.report(f'launching cage NwchemCalculation <{future_cage.pk}>')
+        return ToContext(calc_cage=future_cage)
+
+    def check_cage(self):
+
+        calculation = self.ctx.calc_cage
+
+        if not calculation.is_finished_ok:
+            self.report(f'cage NwchemCalculation failed with exit status {calculation.exit_status}')
+            return self.exit_codes.CAGE_FAILED
+
+        self.ctx.calc_parent_folder = calculation.outputs.remote_folder
+
+    def run_ligand(self):
+
+        inputs = AttributeDict(self.exposed_inputs(NwchemCalculation,'ligand'))
+        inputs.parent_folder = self.ctx.calc_parent_folder
+        parameters = self.inputs.ligand.parameters.get_dict()
+        inputs.metadata = self.inputs.ligand.metadata
+        inputs.metadata.call_link_label = 'ligand'
+        inputs.parameters = orm.Dict(dict=parameters)
+        inputs.structure = self.inputs.ligand.structure
+
+        future_ligand = self.submit(NwchemCalculation,**inputs)
+        self.report(f'launching ligand NwchemCalculation <{future_ligand.pk}>')
+        return ToContext(calc_ligand=future_ligand)
+
+    def check_ligand(self):
+
+        calculation = self.ctx.calc_ligand
+
+        if not calculation.is_finished_ok:
+            self.report(f'ligand NwchemCalculation failed with exit status {calculation.exit_status}')
+            return self.exit_codes.LIGAND_FAILED
+
+        self.ctx.calc_parent_folder = calculation.outputs.remote_folder
+
+    def run_full(self):
+
+        inputs = AttributeDict(self.exposed_inputs(NwchemCalculation,'full'))
+        inputs.parent_folder = self.ctx.calc_parent_folder
+        parameters = self.inputs.full.parameters.get_dict()
+        inputs.metadata = self.inputs.full.metadata
+        inputs.metadata.call_link_label = 'full'
+        inputs.parameters = orm.Dict(dict=parameters)
+        inputs.structure = self.inputs.full.structure
+
+        future_full = self.submit(NwchemCalculation,**inputs)
+        self.report(f'launching cage NwchemCalculation <{future_full.pk}>')
+        return ToContext(calc_full=future_full)
+
+    def check_full(self):
+
+        calculation = self.ctx.calc_full
+
+        if not calculation.is_finished_ok:
+            self.report(f'full NwchemCalculation failed with exit status {calculation.exit_status}')
+            return self.exit_codes.FULL_FAILED
+
+        self.ctx.calc_parent_folder = calculation.outputs.remote_folder
+
+    def run_uhf(self):
+
+        inputs = AttributeDict(self.exposed_inputs(NwchemCalculation,'uhf'))
+        inputs.parent_folder = self.ctx.calc_parent_folder
+        parameters = self.inputs.uhf.parameters.get_dict()
+        inputs.metadata = self.inputs.uhf.metadata
+        inputs.metadata.call_link_label = 'uhf'
+        inputs.parameters = orm.Dict(dict=parameters)
+        inputs.structure = self.inputs.uhf.structure
+
+        future_uhf = self.submit(NwchemCalculation,**inputs)
+        self.report(f'launching uhf NwchemCalculation <{future_uhf.pk}>')
+        return ToContext(calc_uhf=future_uhf)
+
+    def check_uhf(self):
+
+        calculation = self.ctx.calc_uhf
+
+        if not calculation.is_finished_ok:
+            self.report(f'uhf NwchemCalculation failed with exit status {calculation.exit_status}')
+            return self.exit_codes.UHF_FAILED
+
+        self.ctx.calc_parent_folder = calculation.outputs.remote_folder
+
+    def run_dft(self):
+
+        inputs = AttributeDict(self.exposed_inputs(NwchemCalculation,'dft'))
+        inputs.parent_folder = self.ctx.calc_parent_folder
+        parameters = self.inputs.dft.parameters.get_dict()
+        inputs.metadata = self.inputs.dft.metadata
+        inputs.metadata.call_link_label = 'dft'
+        inputs.parameters = orm.Dict(dict=parameters)
+        inputs.structure = self.inputs.dft.structure
+
+        future_dft = self.submit(NwchemCalculation,**inputs)
+        self.report(f'launching dft NwchemCalculation <{future_dft.pk}>')
+        return ToContext(calc_dft=future_dft)
  
-        return self.ctx.low_not_finished
+    def check_dft(self):
 
-    def high_not_finished(self):
- 
-        return self.ctx.high_not_finished
+        calculation = self.ctx.calc_dft
 
-    def run_low(self):
+        if not calculation.is_finished_ok:
+            self.report(f'dft NwchemCalculation failed with exit status {calculation.exit_status}')
+            return self.exit_codes.DFT_FAILED
 
-        inputs = AttributeDict(self.exposed_inputs(PwBaseWorkChain,'low'))
-        inputs.pw.structure = self.inputs.structure
+        self.ctx.calc_parent_folder = calculation.outputs.remote_folder
 
-        inputs.metadata.call_link_label = 'low'
-        inputs = prepare_process_inputs(PwBaseWorkChain, inputs)
+    def run_tddft(self):
 
-        future = self.submit(PwBaseWorkChain, **inputs)
+        inputs = AttributeDict(self.exposed_inputs(NwchemCalculation,'tddft'))
+        inputs.parent_folder = self.ctx.calc_parent_folder
+        parameters = self.inputs.tddft.parameters.get_dict()
+        inputs.metadata = self.inputs.tddft.metadata
+        inputs.metadata.call_link_label = 'tddft'
+        inputs.parameters = orm.Dict(dict=parameters)
+        inputs.structure = self.inputs.dft.structure
 
-        self.report(f'launching LOW PwBaseWorkChain<{future.pk}>')
+        future_tddft = self.submit(NwchemCalculation,**inputs)
+        self.report(f'launching tddft NwchemCalculation <{future_tddft.pk}>')
+        return ToContext(calc_tddft=future_tddft)
 
-        return ToContext(workchain_low=future)
+    def check_tddft(self):
 
-    def check_low(self):
+        calculation = self.ctx.calc_tddft
 
-        workchain = self.ctx.workchain_low
-        if not workchain.is_finished_ok:
-            self.report(f'Relax PwBaseWorkChain failed with exit status {workchain.exit_status}')
-            return self.exit_codes.ERROR_SUB_PROCESS_FAILED_LOW
-
-        self.ctx.low_not_finished = False
-
-    def run_high(self):
-
-        workchain = self.ctx.workchain_low
-
-        inputs = AttributeDict(self.exposed_inputs(PwBaseWorkChain, 'high'))
-        inputs.pw.structure = workchain.outputs.output_structure
-
-        inputs.metadata.call_link_label = 'high'
-        inputs = prepare_process_inputs(PwBaseWorkChain, inputs)
-
-        future = self.submit(PwBaseWorkChain, **inputs)
-
-        self.report(f'launching HIGH PwBaseWorkChain<{future.pk}>')
-
-        return ToContext(workchain_high=future)
-
-    def check_high(self):
-
-        workchain = self.ctx.workchain_high
-        if not workchain.is_finished_ok:
-            self.report(f'Relax PwBaseWorkChain failed with exit status {workchain.exit_status}')
-            return self.exit_codes.ERROR_SUB_PROCESS_FAILED_HIGH
-
-        self.ctx.high_not_finished = False
+        if not calculation.is_finished_ok:
+            self.report(f'tddft NwchemCalculation failed with exit status {calculation.exit_status}')
+            return self.exit_codes.TDDFT_FAILED
 
     def results(self):
 
-        workchain = self.ctx.workchain_high
-        if workchain.is_finished_ok:
+        calculation = self.ctx.calc_tddft
+        if calculation.is_finished_ok:
             self.report(f'workchain finished')
 
-        self.out_many(self.exposed_outputs(workchain, PwBaseWorkChain))
+        self.out_many(self.exposed_outputs(calculation, NwchemCalculation))
