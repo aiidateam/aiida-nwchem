@@ -260,12 +260,12 @@ class NwchemBaseParser(Parser):
 
     def parse_dft(self, lines):
         """
-        Parse a TDDFT task block
+        Parse a DFT task block
 
         args: lines: the lines to parse
         """
 
-        result_dict = {'theory':'tddft'}
+        result_dict = {'theory':'dft'}
         state = None
 
         for line in lines:
