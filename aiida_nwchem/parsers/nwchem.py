@@ -295,13 +295,17 @@ class NwchemBaseParser(Parser):
 
     def parse_tddft(self, lines):
         """
-        Parse a DFT task block
+
+        Parse a TDDFT task block
 
         args: lines: the lines to parse
         """
 
-        result_dict = {'theory':'dft'}
+        result_dict = {'theory':'tddft'}
         state = None
+
+        transition_energies = []
+        dipole_oscillator_strengths = []
 
         for line in lines:
 
@@ -323,6 +327,18 @@ class NwchemBaseParser(Parser):
                 result_dict['cpu_time'] = result.group(1)
                 result_dict['wall_time'] = result.group(2)
                 break
+
+            # Parse excitation energies
+            if 'Root' in line:
+                transition_energies.append(float(line.split()[-2]))
+            if 'Dipole Oscillator Strength' in line:
+                dipole_oscillator_strengths.append(float(line.split()[-1]))
+
+        if len(excitation_energies) == len(dipole_oscillator_strengths):
+            result_dict['transition_energies'] = transition_energies
+            result_dict['dipole_oscillator_strengths'] = dipole_oscillator_strengths
+        else:
+            self.report(f'Excitation energies list does not match the length of the dipole oscillator strengths')
 
         return result_dict
 
