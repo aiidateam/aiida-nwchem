@@ -333,7 +333,7 @@ class NwchemBaseParser(Parser):
             if 'Dipole Oscillator Strength' in line:
                 dipole_oscillator_strengths.append(float(line.split()[-1]))
 
-        if len(excitation_energies) == len(dipole_oscillator_strengths):
+        if len(transition_energies) == len(dipole_oscillator_strengths):
             result_dict['transition_energies'] = transition_energies
             result_dict['dipole_oscillator_strengths'] = dipole_oscillator_strengths
         else:
