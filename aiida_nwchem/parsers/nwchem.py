@@ -155,14 +155,10 @@ class NwchemBaseParser(Parser):
         lines from each task
         """
 
+        # State to track if we're in a task or not
+        in_task = False
         # List to hold all of the parsed task dictionaries
         task_list = []
-
-        task_dict = {
-            'task_type': None, # We do not know the task type yet
-            'theory_type': None, # We also do not yet know the theory used
-            'lines': [],
-        }
 
         for index, line in enumerate(all_lines):
 
@@ -171,36 +167,44 @@ class NwchemBaseParser(Parser):
                 self.parse_errors(all_lines, index)
                 #raise OutputParsingError("NWChem did not finish properly. Reported error:\n"
                 #                         "{}".format(line))
+            
+            if re.match(r'^\s*NWChem Input Module\s*$', line):
+                # We're inside a task block
+                in_task = True
+                first_line = index
+                task_dict = {
+                    'task_type': None, # We do not know the task type yet
+                    'theory_type': None, # We also do not yet know the theory used
+                    'lines': [],
+                }
 
-            # Determine what general kind of task we have - e.g. energy, optimisation, etc.
-            if re.match(r'^\s*NWChem Geometry Optimization\s*$',line):
-                task_dict['task_type'] = 'geoopt'
-                continue
-            elif re.match(r'^\s*NWChem Nuclear Hessian and Frequency Analysis\s*$',line):
-                task_dict['task_type'] = 'freq'
                 continue
 
-            # Determine the theory used - eg. HF, DFT, etc.
-            if re.match(r'^\s*NWChem SCF Module\s*$',line):
-                task_dict['theory_type'] = 'scf'
-                first_line = index
-                continue
-            elif re.match(r'^\s*NWChem DFT Module\s*$',line):
-                task_dict['theory_type'] = 'dft'
-                first_line = index
-                continue
-            elif re.match(r'^\s*NWChem TDDFT Module\s*$',line):
-                task_dict['theory_type'] = 'tddft'
-                first_line = index
-                continue
-            elif re.match(r'^[\s\*]*NWPW BAND Calculation[\s\*]*$',line):
-                task_dict['theory_type'] = 'nwpw_band'
-                first_line = index
-                continue
-            elif re.match(r'^[\s]+NWChem Extensible Many-Electron Theory Module[\s]*$', line):
-                task_dict['theory_type'] = 'tce'
-                first_line = index
-                continue
+            if in_task:
+                # Determine what general kind of task we have - e.g. energy, optimisation, etc.
+                if re.match(r'^\s*NWChem Geometry Optimization\s*$',line):
+                    task_dict['task_type'] = 'geoopt'
+                    continue
+                elif re.match(r'^\s*NWChem Nuclear Hessian and Frequency Analysis\s*$',line):
+                    task_dict['task_type'] = 'freq'
+                    continue
+
+                # Determine the theory used - eg. HF, DFT, etc.
+                if re.match(r'^\s*NWChem SCF Module\s*$',line):
+                    task_dict['theory_type'] = 'scf'
+                    continue
+                elif re.match(r'^\s*NWChem DFT Module\s*$',line):
+                    task_dict['theory_type'] = 'dft'
+                    continue
+                elif re.match(r'^\s*NWChem TDDFT Module\s*$',line):
+                    task_dict['theory_type'] = 'tddft'
+                    continue
+                elif re.match(r'^[\s\*]*NWPW BAND Calculation[\s\*]*$',line):
+                    task_dict['theory_type'] = 'nwpw_band'
+                    continue
+                elif re.match(r'^[\s]+NWChem Extensible Many-Electron Theory Module[\s]*$', line):
+                    task_dict['theory_type'] = 'tce'
+                    continue
 
             # Check if we've hit the end of the task block
             if re.match(r'^ Task  times  cpu:\s+[0-9.]+s\s+wall:\s+[0-9.]+s$', line):
@@ -289,6 +293,7 @@ class NwchemBaseParser(Parser):
 
     def parse_tddft(self, lines):
         """
+
         Parse a TDDFT task block
 
         args: lines: the lines to parse
@@ -296,6 +301,9 @@ class NwchemBaseParser(Parser):
 
         result_dict = {'theory':'tddft'}
         state = None
+
+        transition_energies = []
+        dipole_oscillator_strengths = []
 
         for line in lines:
 
@@ -317,6 +325,19 @@ class NwchemBaseParser(Parser):
                 result_dict['cpu_time'] = result.group(1)
                 result_dict['wall_time'] = result.group(2)
                 break
+
+
+            # Parse excitation energies
+            if 'Root' in line:
+                transition_energies.append(float(line.split()[-2]))
+            if 'Dipole Oscillator Strength' in line:
+                dipole_oscillator_strengths.append(float(line.split()[-1]))
+
+        if len(transition_energies) == len(dipole_oscillator_strengths):
+            result_dict['transition_energies'] = transition_energies
+            result_dict['dipole_oscillator_strengths'] = dipole_oscillator_strengths
+        else:
+            self.report(f'Excitation energies list does not match the length of the dipole oscillator strengths')
 
         return result_dict
 
