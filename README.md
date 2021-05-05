@@ -10,6 +10,7 @@ The plugin provides support for the following calculation tasks:
 - scf
 - dft
 - NWPW Band
+- NWPW PSPW
 - TCE
 
 Version 2.x+ of the plugin is compatible only with `aiida-core` v1.0+ 
