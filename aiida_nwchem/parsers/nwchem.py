@@ -198,6 +198,9 @@ class NwchemBaseParser(Parser):
                 elif re.match(r'^[\s\*]*NWPW BAND Calculation[\s\*]*$',line):
                     task_dict['theory_type'] = 'nwpw_band'
                     continue
+                elif re.match(r'^[\s\*]*NWPW PSPW Calculation[\s\*]*$',line):
+                    task_dict['theory_type'] = 'nwpw_pspw'
+                    continue
                 elif re.match(r'^[\s]+NWChem Extensible Many-Electron Theory Module[\s]*$', line):
                     task_dict['theory_type'] = 'tce'
                     continue
@@ -333,6 +336,49 @@ class NwchemBaseParser(Parser):
 
         return result_dict
 
+    def parse_nwpw_pspw(self, lines):
+        """
+        Parse an 'NWPW PSPW' task block
+
+        args: lines: the lines to parse
+        """
+        result_dict = {'theory': 'nwpw pspw'}
+        state = None
+        forces = []
+
+        for line in lines:
+
+            result = re.match(r'^\s*electron spin\s*=\s*([A-z]+)\s*$',line)
+            if result:
+                result_dict['electron spin'] = result.group(1)
+
+            # Find start of results section
+            if re.match(r'^[\s=]*Summary Of Results[\s=]*$', line):
+                state = 'final-results'
+
+            # Gather energies
+            if state == 'final-results':
+                result = re.match(r'^\s*([A-z][A-z\s.-]+)[\s:]+([0-9.E+-]+)\s*\([0-9a-zA-Z.+\/\s-]*\)\s*$',line)
+                if result:
+                    key = re.sub(r'[^a-zA-Z0-9]+', '_', result.group(1).strip().lower())
+                    result_dict[key] = float(result.group(2))
+
+            # Forces
+            result = re.match(r'^\s+[0-9]+[\sA-z\(]+([0-9\-.]+)\s+([0-9\-.]+)\s+([0-9\-.]+)\s+\)$', line)
+            if result:
+                forces.append([result.group(1), result.group(2), result.group(3)])
+
+            # End of task
+            if re.match('^ Task  times  cpu:', line):
+                result = re.match(r'^ Task  times  cpu:\s*([\d\.\d]+)s\s*wall:\s*([\d\.\d]+)s', line)
+                result_dict['cpu_time'] = result.group(1)
+                result_dict['wall_time'] = result.group(2)
+                break
+
+        if forces:
+            result_dict['forces'] = forces
+
+        return result_dict
 
     def parse_tce(self,lines):
         """

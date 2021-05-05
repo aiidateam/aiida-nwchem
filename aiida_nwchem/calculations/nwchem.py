@@ -71,6 +71,8 @@ class NwchemCalculation(CalcJob):
                     'scheduler before the files were safely written to disk for a potential restart.')
         spec.exit_code(350, 'ERROR_UNEXPECTED_PARSER_EXCEPTION',
             message='The parser raised an unexpected exception.')
+        spec.exit_code(401, 'ERROR_NON_PERIODIC_CELL',
+            message='A simulation cell was requested but the structure provided has at least one non periodic dimension.')
 
         # yapf: enable
 
@@ -100,8 +102,11 @@ class NwchemCalculation(CalcJob):
             atom_kinds.append(site_dict['kind_name'])
             atom_coords_cartesian.append(site_dict['position'])
 
-        # For calculations with a cell, coordinates must be converted to fractional coordinates
+        # For calculations with a truly periodic cell, such as solid state calculations,
+        # coordinates must be converted into fractional coordinates
         if add_cell:
+            if self.inputs.structure.pbc != (True, True, True): # Any dimension not periodic
+                return self.exit_codes.ERROR_NON_PERIODIC_CELL
             cell = self.inputs.structure.cell
             inv_cell = np.linalg.inv(cell)
             atom_coords_fractional = []
