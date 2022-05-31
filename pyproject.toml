@@ -1,0 +1,47 @@
+[tool.pylint.format]
+max-line-length = 120
+
+[tool.pylint.messages_control]
+disable = [
+    "bad-continuation",
+    "bad-option-value",
+    "consider-using-f-string",
+    "cyclic-import",
+    "duplicate-code",
+    "import-outside-toplevel",
+    "inconsistent-return-statements",
+    "locally-disabled",
+    "logging-fstring-interpolation",
+    "no-else-raise",
+    "raise-missing-from",
+    "too-few-public-methods",
+    "too-many-ancestors",
+    "too-many-arguments",
+    "too-many-instance-attributes",
+    # this can be removed when https://github.com/PyCQA/astroid/issues/1015 is fixed
+    "not-context-manager",
+]
+
+[tool.pylint.basic]
+good-names = [
+    "_",
+    "x",
+    "y",
+    "z",
+    "i",
+    "j",
+    "k",
+    "dt",
+    "pk",
+    "fg",
+    "tz",
+    "nl",
+    "TemplatereplacerCalculation",
+    "ArithmeticAddCalculation",
+    "MultiplyAddWorkChain"
+]
+no-docstring-rgx = "^_,setUp,tearDown"
+docstring-min-length = 5
+
+[tool.pylint.design]
+max-locals = 20

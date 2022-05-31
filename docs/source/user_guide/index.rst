@@ -9,5 +9,3 @@ User guide
     installation
     usage
     examples
-
-
