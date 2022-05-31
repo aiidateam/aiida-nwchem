@@ -9,12 +9,11 @@
 # For further information please visit http://www.aiida.net               #
 ###########################################################################
 
-
-import sys
 import os
+import sys
 
 from aiida.common.example_helpers import test_and_get_code
-from aiida.common.exceptions import NotExistent
+from aiida.plugins import DataFactory
 
 ################################################################
 
@@ -22,15 +21,15 @@ ParameterData = DataFactory('parameter')
 StructureData = DataFactory('structure')
 try:
     dontsend = sys.argv[1]
-    if dontsend == "--dont-send":
+    if dontsend == '--dont-send':
         submit_test = True
-    elif dontsend == "--send":
+    elif dontsend == '--send':
         submit_test = False
     else:
         raise IndexError
 except IndexError:
-    print >> sys.stderr, ("The first parameter can only be either "
-                          "--send or --dont-send")
+    print >> sys.stderr, ('The first parameter can only be either '
+                          '--send or --dont-send')
     sys.exit(1)
 
 try:
@@ -45,25 +44,38 @@ settings = None
 
 code = test_and_get_code(codename, expected_code_type='nwchem.basic')
 
-alat = 4. # angstrom
-cell = [[alat, 0., 0.,],
-        [0., alat, 0.,],
-        [0., 0., alat,],
-       ]
+alat = 4.  # angstrom
+cell = [
+    [
+        alat,
+        0.,
+        0.,
+    ],
+    [
+        0.,
+        alat,
+        0.,
+    ],
+    [
+        0.,
+        0.,
+        alat,
+    ],
+]
 
 # BaTiO3 cubic structure
 s = StructureData(cell=cell)
-s.append_atom(position=(0.,0.,0.),symbols=['O'])
-s.append_atom(position=(0., 1.43042809,-1.10715266),symbols=['H'])
-s.append_atom(position=(0.,-1.43042809,-1.10715266),symbols=['H'])
+s.append_atom(position=(0., 0., 0.), symbols=['O'])
+s.append_atom(position=(0., 1.43042809, -1.10715266), symbols=['H'])
+s.append_atom(position=(0., -1.43042809, -1.10715266), symbols=['H'])
 
 calc = code.new_calc()
-calc.label = "Test NWChem"
-calc.description = "Test calculation with the NWChem SCF code"
-calc.set_max_wallclock_seconds(30*60) # 30 min
+calc.label = 'Test NWChem'
+calc.description = 'Test calculation with the NWChem SCF code'
+calc.set_max_wallclock_seconds(30 * 60)  # 30 min
 # Valid only for Slurm and PBS (using default values for the
-# number_cpus_per_machine), change for SGE-like schedulers 
-calc.set_resources({"num_machines": 1})
+# number_cpus_per_machine), change for SGE-like schedulers
+calc.set_resources({'num_machines': 1})
 ## Otherwise, to specify a given # of cpus per machine, uncomment the following:
 # calc.set_resources({"num_machines": 1, "num_mpiprocs_per_machine": 8})
 
@@ -77,17 +89,16 @@ calc.use_parameters(ParameterData(dict={'add_cell': False}))
 
 if submit_test:
     subfolder, script_filename = calc.submit_test()
-    print "Test_submit for calculation (uuid='{}')".format(
-        calc.uuid)
-    print "Submit file in {}".format(os.path.join(
-        os.path.relpath(subfolder.abspath),
-        script_filename
-        ))
+    print(f"Test_submit for calculation (uuid='{calc.uuid}')")
+    print(
+        f'Submit file in {os.path.join(os.path.relpath(subfolder.abspath), script_filename)}'
+    )
 else:
     calc.store_all()
-    print "created calculation; calc=Calculation(uuid='{}') # ID={}".format(
-        calc.uuid,calc.dbnode.pk)
+    print(
+        f"created calculation; calc=Calculation(uuid='{calc.uuid}') # ID={calc.dbnode.pk}"
+    )
     calc.submit()
-    print "submitted calculation; calc=Calculation(uuid='{}') # ID={}".format(
-        calc.uuid,calc.dbnode.pk)
-
+    print(
+        f"submitted calculation; calc=Calculation(uuid='{calc.uuid}') # ID={calc.dbnode.pk}"
+    )

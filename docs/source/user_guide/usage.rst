@@ -56,8 +56,8 @@ in the case of a section name, or `''` in the case of a lone keyword.
 .. warning::
     Only one `task` or `basis` can be defined. This is both a limitation
     of a dictionary in that keys must be unique, and a design choice.
-    In `AiiDA`, a central idea is provenance tracking. While it is possible 
-    to run many tasks sequentially in a single `NWChem` input file, only a single 
+    In `AiiDA`, a central idea is provenance tracking. While it is possible
+    to run many tasks sequentially in a single `NWChem` input file, only a single
     set of inputs and outputs would be captured for a single `AiiDA` process.
     Conceptually in this case, it would make more sense to separate this
     one large job into a series of smaller component jobs and to track

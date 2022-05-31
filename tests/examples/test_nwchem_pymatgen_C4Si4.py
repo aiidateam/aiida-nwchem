@@ -9,30 +9,27 @@
 # For further information please visit http://www.aiida.net               #
 ###########################################################################
 
-
-import sys
 import os
-
-from ase import Atoms
+import sys
 
 from aiida.common.example_helpers import test_and_get_code
-from aiida.common.exceptions import NotExistent
-
+from ase import Atoms
+from aiida.plugins import DataFactory
 ################################################################
 
 ParameterData = DataFactory('parameter')
 StructureData = DataFactory('structure')
 try:
     dontsend = sys.argv[1]
-    if dontsend == "--dont-send":
+    if dontsend == '--dont-send':
         submit_test = True
-    elif dontsend == "--send":
+    elif dontsend == '--send':
         submit_test = False
     else:
         raise IndexError
 except IndexError:
-    print >> sys.stderr, ("The first parameter can only be either "
-                          "--send or --dont-send")
+    print('The first parameter can only be either --send or --dont-send',
+          file=sys.stderr)
     sys.exit(1)
 
 try:
@@ -48,35 +45,33 @@ settings = None
 code = test_and_get_code(codename, expected_code_type='nwchem.pymatgen')
 
 calc = code.new_calc()
-calc.label = "Test NWChem"
-calc.description = "Test calculation with the NWChem SCF code"
-calc.set_max_wallclock_seconds(30*60) # 30 min
-calc.set_resources({"num_machines": 1})
+calc.label = 'Test NWChem'
+calc.description = 'Test calculation with the NWChem SCF code'
+calc.set_max_wallclock_seconds(30 * 60)  # 30 min
+calc.set_resources({'num_machines': 1})
 
 if queue is not None:
     calc.set_queue_name(queue)
 
-parameters = ParameterData(dict={
-    'directives': [
-        ['set nwpw:minimizer', '2'],
-        ['set nwpw:psi_nolattice', '.true.'],
-        ['set includestress', '.true.']
-    ],
-    'geometry_options': [
-        'units',
-        'au',
-        'center',
-        'noautosym',
-        'noautoz',
-        'print'
-    ],
-    'memory_options': [],
-    'symmetry_options': [],
-    'tasks': [
-        {
+parameters = ParameterData(
+    dict={
+        'directives': [['set nwpw:minimizer', '2'],
+                       ['set nwpw:psi_nolattice', '.true.'],
+                       ['set includestress', '.true.']],
+        'geometry_options':
+        ['units', 'au', 'center', 'noautosym', 'noautoz', 'print'],
+        'memory_options': [],
+        'symmetry_options': [],
+        'tasks': [{
             'alternate_directives': {
-                'driver': {'clear': '', 'maxiter': 40},
-                'nwpw': {'ewald_ncut': 8, 'simulation_cell': '\n  ngrid 16 16 16\n end'}
+                'driver': {
+                    'clear': '',
+                    'maxiter': 40
+                },
+                'nwpw': {
+                    'ewald_ncut': 8,
+                    'simulation_cell': '\n  ngrid 16 16 16\n end'
+                }
             },
             'basis_set': {},
             'charge': 0,
@@ -85,12 +80,12 @@ parameters = ParameterData(dict={
             'theory': 'pspw',
             'theory_directives': {},
             'title': None
-        }
-    ],
-    'add_cell': True
-})
+        }],
+        'add_cell':
+        True
+    })
 
-a = Atoms(['Si', 'Si', 'Si' ,'Si', 'C', 'C', 'C', 'C'],
+a = Atoms(['Si', 'Si', 'Si', 'Si', 'C', 'C', 'C', 'C'],
           cell=[8.277, 8.277, 8.277])
 a.set_scaled_positions([
     (-0.5, -0.5, -0.5),
@@ -98,9 +93,9 @@ a.set_scaled_positions([
     (0.0, -0.5, 0.0),
     (-0.5, 0.0, 0.0),
     (-0.25, -0.25, -0.25),
-    (0.25 ,0.25 ,-0.25),
+    (0.25, 0.25, -0.25),
     (0.25, -0.25, 0.25),
-    (-0.25 ,0.25 ,0.25),
+    (-0.25, 0.25, 0.25),
 ])
 struct = StructureData(ase=a)
 
@@ -109,16 +104,16 @@ calc.use_parameters(parameters)
 
 if submit_test:
     subfolder, script_filename = calc.submit_test()
-    print "Test_submit for calculation (uuid='{}')".format(
-        calc.uuid)
-    print "Submit file in {}".format(os.path.join(
-        os.path.relpath(subfolder.abspath),
-        script_filename
-        ))
+    print(f"Test_submit for calculation (uuid='{calc.uuid}')")
+    print(
+        f'Submit file in {os.path.join(os.path.relpath(subfolder.abspath), script_filename)}'
+    )
 else:
     calc.store_all()
-    print "created calculation; calc=Calculation(uuid='{}') # ID={}".format(
-        calc.uuid,calc.dbnode.pk)
+    print(
+        f"created calculation; calc=Calculation(uuid='{calc.uuid}') # ID={calc.dbnode.pk}"
+    )
     calc.submit()
-    print "submitted calculation; calc=Calculation(uuid='{}') # ID={}".format(
-        calc.uuid,calc.dbnode.pk)
+    print(
+        f"submitted calculation; calc=Calculation(uuid='{calc.uuid}') # ID={calc.dbnode.pk}"
+    )
