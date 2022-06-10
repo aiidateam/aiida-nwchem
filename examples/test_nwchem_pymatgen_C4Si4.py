@@ -13,8 +13,9 @@ import os
 import sys
 
 from aiida.common.example_helpers import test_and_get_code
-from ase import Atoms
 from aiida.plugins import DataFactory
+from ase import Atoms
+
 ################################################################
 
 ParameterData = DataFactory('parameter')
