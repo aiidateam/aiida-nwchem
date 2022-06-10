@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Calculation classes for NWChem"""
+"""Calculation classes for aiida-nwchem."""
 import numpy as np
 from aiida import orm
 from aiida.common.datastructures import CalcInfo, CodeInfo
@@ -11,7 +11,7 @@ def validate_parameters(value, ctx=None):  # pylint: disable=unused-argument
     value.get_dict()
 
 
-class NwchemCalculation(CalcJob):
+class NwchemBaseCalculation(CalcJob):
     """
     Base calculation class for NWChem.
     """
@@ -24,179 +24,60 @@ class NwchemCalculation(CalcJob):
     @classmethod
     def define(cls, spec):
         """Define the process specification."""
+        # yapf: disable
         super().define(spec)
-        # spec.input('parent_folder', valid_type=(orm.RemoteData, orm.FolderData), required=True,
-        #     help='Output folder of a completed `PwCalculation`')
-        spec.input('parameters',
-                   valid_type=orm.Dict,
-                   required=True,
-                   validator=validate_parameters,
-                   help='Input parameters')
-        spec.input('structure',
-                   valid_type=orm.StructureData,
-                   required=True,
-                   help='The input structure, with or without a cell')
-        spec.input('add_cell',
-                   valid_type=orm.Bool,
-                   default=lambda: orm.Bool(False),
-                   help='The input structure, with or without a cell')
-        # spec.input('settings', valid_type=orm.Dict, required=False,
-        #     help='Optional parameters to affect the way the calculation job is performed.')
+        spec.input('input_file', valid_type=orm.SinglefileData, required=True, help='NWChem input file')
+        spec.input('remote_folder', valid_type=(orm.RemoteData, orm.FolderData), required=False,
+             help='Remote directory of a completed NWChem calculation to restart from.')
 
-        spec.input('metadata.options.input_filename',
-                   valid_type=str,
-                   default=cls._DEFAULT_INPUT_FILE)
-        spec.input('metadata.options.output_filename',
-                   valid_type=str,
-                   default=cls._DEFAULT_OUTPUT_FILE)
-        spec.input('metadata.options.parser_name',
-                   valid_type=str,
-                   default='nwchem.nwchem')
-        spec.input('metadata.options.withmpi', valid_type=bool, default=True)
+        spec.inputs['metadata']['options']['withmpi'].default = True
+        spec.inputs['metadata']['options']['parser_name'].default = 'nwchem.nwchem'
+        spec.input('metadata.options.input_filename', valid_type=str, default=cls._DEFAULT_INPUT_FILE)
+        spec.input('metadata.options.output_filename', valid_type=str, default=cls._DEFAULT_OUTPUT_FILE)
         spec.input('metadata.options.total_memory',
-                   valid_type=float,
-                   default=2000.,
-                   help='Total memory available per MPI process in MB')
+            valid_type=float,
+            default=2000.,
+            help='Total memory available per MPI process in MB')
 
         spec.output('output_parameters', valid_type=orm.Dict)
-        spec.output('output_structure',
-                    valid_type=orm.StructureData,
-                    required=False,
-                    help='The relaxed output structure.')
+        spec.output('output_structure', valid_type=orm.StructureData, required=False,
+            help='The relaxed output structure.')
 
         spec.default_output_node = 'output_parameters'
 
         # Standard exceptions
-        spec.exit_code(
-            301,
-            'ERROR_NO_RETRIEVED_TEMPORARY_FOLDER',
+        spec.exit_code(301, 'ERROR_NO_RETRIEVED_TEMPORARY_FOLDER',
             message='The retrieved temporary folder could not be accessed.')
-        spec.exit_code(
-            302,
-            'ERROR_OUTPUT_STDOUT_MISSING',
-            message=
-            'The retrieved folder did not contain the required stdout output file.'
-        )
-        spec.exit_code(310,
-                       'ERROR_OUTPUT_STDOUT_READ',
-                       message='The stdout output file could not be read.')
-        spec.exit_code(312,
-                       'ERROR_OUTPUT_STDOUT_INCOMPLETE',
-                       message='The stdout output file was incomplete.')
-        spec.exit_code(313,
-                       'ERROR_MULTIPLE_CALCULATIONS',
-                       message='The stdout contains multiple calculations')
+        spec.exit_code(302, 'ERROR_OUTPUT_STDOUT_MISSING',
+            message='The retrieved folder did not contain the required stdout output file.')
+        spec.exit_code(310, 'ERROR_OUTPUT_STDOUT_READ',
+            message='The stdout output file could not be read.')
+        spec.exit_code(312, 'ERROR_OUTPUT_STDOUT_INCOMPLETE',
+            message='The stdout output file was incomplete.')
+        spec.exit_code(313, 'ERROR_MULTIPLE_CALCULATIONS',
+            message='The stdout contains multiple calculations')
         spec.exit_code(340, 'ERROR_OUT_OF_WALLTIME_INTERRUPTED',
-            message='The calculation stopped prematurely because it ran out of walltime but the job was killed by the ' + \
+            message='The calculation stopped prematurely because it ran out of walltime but the job was killed by the '
                     'scheduler before the files were safely written to disk for a potential restart.')
-        spec.exit_code(350,
-                       'ERROR_UNEXPECTED_PARSER_EXCEPTION',
-                       message='The parser raised an unexpected exception.')
-        spec.exit_code(
-            401,
-            'ERROR_NON_PERIODIC_CELL',
-            message=
-            'A simulation cell was requested but the structure provided has at least one non periodic dimension.'
-        )
+        spec.exit_code(350, 'ERROR_UNEXPECTED_PARSER_EXCEPTION',
+            message='The parser raised an unexpected exception.')
+        spec.exit_code(401, 'ERROR_NON_PERIODIC_CELL',
+            message='A simulation cell was requested but the structure provided has at least one non periodic dimension.')
+
+        # yapf: enable
 
     def prepare_for_submission(self, folder):
         """Prepare the calculation job for submission by transforming input nodes into input files.
-
-        In addition to the input files written to the sandbox folder, a `CalcInfo` instance will be returned that
+        In addition to the input files being written to the sandbox folder, a `CalcInfo` instance will be returned that
         contains lists of files that need to be copied to the remote machine before job submission, as well as file
         lists that are to be retrieved after job completion.
         :param folder: a sandbox folder to temporarily write files on disk.
         :return: `aiida.common.datastructures.CalcInfo` instance.
         """
 
-        parameters = self.inputs.parameters.get_dict()
-        abbreviation = parameters.pop('abbreviation', 'aiida_calc')
-        title = parameters.pop('title', 'AiiDA NWChem calculation')
-        memory = self.inputs.metadata.options.total_memory
-        basis = parameters.pop('basis', None)
-        symmetry = parameters.pop('symmetry', None)
-        set_commands = parameters.pop('set', None)
-        task = parameters.pop('task', None)
-        add_cell = self.inputs.add_cell
-
-        atom_kinds = []
-        atom_coords_cartesian = []
-        for site in self.inputs.structure.sites:
-            site_dict = site.get_raw()
-            atom_kinds.append(site_dict['kind_name'])
-            atom_coords_cartesian.append(site_dict['position'])
-
-        # For calculations with a truly periodic cell, such as solid state calculations,
-        # coordinates must be converted into fractional coordinates
-        if add_cell:
-            if self.inputs.structure.pbc != (
-                    True, True, True):  # Any dimension not periodic
-                return self.exit_codes.ERROR_NON_PERIODIC_CELL
-            cell = self.inputs.structure.cell
-            inv_cell = np.linalg.inv(cell)
-            atom_coords_fractional = []
-            for coords_cart in atom_coords_cartesian:
-                atom_coords_fractional.append(np.dot(coords_cart, inv_cell))
-
-        cell_lengths = self.inputs.structure.cell_lengths
-        cell_angles = self.inputs.structure.cell_angles
-
         input_filename = folder.get_abs_path(self._DEFAULT_INPUT_FILE)
         with open(input_filename, 'w') as f:
-            # Echo the input file in the output
-            f.write('echo\n')
-            # Title
-            f.write(f'start {abbreviation}\ntitle "{title}\"\n')
-            # Memory
-            f.write(f'memory {memory} mb\n')
-            # Cell
-            f.write('geometry units angstroms noautoz noautosym\n')
-            if add_cell:
-                f.write('  system crystal\n')
-                f.write('    lat_a {}\n    lat_b {}\n    lat_c {}\n'.format(
-                    *cell_lengths))
-                f.write('    alpha {}\n    beta  {}\n    gamma {}\n'.format(
-                    *cell_angles))
-                f.write('  end\n')
-            if symmetry:
-                f.write(f'  symmetry {symmetry}\n')
-            # Coordinates
-            if add_cell:
-                atom_coords = atom_coords_fractional
-            else:
-                atom_coords = atom_coords_cartesian
-            for kind, coords in zip(atom_kinds, atom_coords):
-                f.write('  {} {} {} {}\n'.format(kind, *coords))
-            f.write('end\n')
-            # Basis
-            if basis:
-                f.write('basis\n')
-                for atom_type, basis_name in basis.items():
-                    f.write(f'  {atom_type} {basis_name}\n')
-                f.write('end\n')
-
-            # Additional free-form parameters
-            def convert_parameters(parameters, indent):
-                for key, value in parameters.items():
-                    if isinstance(value, dict):
-                        f.write(' ' * 4 * indent + f'{key}\n')
-                        convert_parameters(value, indent + 1)
-                        f.write(' ' * 4 * indent + 'end\n')
-                    else:
-                        f.write(' ' * 4 * indent + f'{key} {value}\n')
-
-            convert_parameters(parameters, indent=0)
-
-            # Any 'set' commands
-            if set_commands:
-                for key, value in set_commands.items():
-                    f.write(f'set {key} {value}\n')
-
-            # Add the task as the final line
-            if task:
-                f.write(f'task {task}\n')
-
-            f.flush()
+            f.write(self._get_input_file())
 
         _default_commandline_params = [self._DEFAULT_INPUT_FILE]
         codeinfo = CodeInfo()
@@ -217,3 +98,137 @@ class NwchemCalculation(CalcJob):
         calcinfo.retrieve_singlefile_list = []
 
         return calcinfo
+
+    def _get_input_file(self) -> str:
+        """Prepare NWChem input file from CalcJob inputs.
+
+        This function just returns the content of the 'input_file' input,
+        but can be overwritten by child classes to synthesize the
+        NWChem input file.
+        """
+        return self.inputs.input_file.get_content()
+
+
+class NwchemCalculation(NwchemBaseCalculation):
+    """
+    Base calculation class for NWChem.
+
+    Synthesizes NWChem input file from parameter dictionary and StructureData.
+    """
+
+    @classmethod
+    def define(cls, spec):
+        """Define the process specification."""
+        # yapf: disable
+        super().define(spec)
+        #spec.expose_inputs(super().__class__, exclude=('input_file'))
+        del spec.inputs['input_file']
+        spec.input('parameters', valid_type=orm.Dict, required=True, validator=validate_parameters,
+            help='Input parameters')
+        spec.input('structure', valid_type=orm.StructureData, required=True,
+            help='The input structure, with or without a cell')
+        spec.input('add_cell', valid_type=orm.Bool, default=lambda:orm.Bool(False),
+            help='The input structure, with or without a cell')
+
+    def prepare_for_submission(self, folder):
+        """Prepare the calculation job for submission by transforming input nodes into input files.
+        In addition to the input files being written to the sandbox folder, a `CalcInfo` instance will be returned that
+        contains lists of files that need to be copied to the remote machine before job submission, as well as file
+        lists that are to be retrieved after job completion.
+        :param folder: a sandbox folder to temporarily write files on disk.
+        :return: `aiida.common.datastructures.CalcInfo` instance.
+        """
+        if self.inputs.add_cell:
+            if self.inputs.structure.pbc != (True, True, True): # Any dimension not periodic
+                return self.exit_codes.ERROR_NON_PERIODIC_CELL
+
+        return super().prepare_for_submission(folder)
+
+    def _get_input_file(self):
+        """Prepare NWChem input file from CalcJob inputs.
+
+        This overloads the simpler method from the NwchemBaseCalculation class.
+        """
+        inputs = self.inputs
+        parameters = inputs.parameters.get_dict()
+        abbreviation = parameters.pop('abbreviation','aiida_calc')
+        title = parameters.pop('title','AiiDA NWChem calculation')
+        memory = inputs.metadata.options.total_memory
+        basis = parameters.pop('basis',None)
+        symmetry = parameters.pop('symmetry', None)
+        set_commands = parameters.pop('set', None)
+        task = parameters.pop('task', None)
+        add_cell = inputs.add_cell
+
+        atom_kinds = []
+        atom_coords_cartesian = []
+        for site in inputs.structure.sites:
+            site_dict = site.get_raw()
+            atom_kinds.append(site_dict['kind_name'])
+            atom_coords_cartesian.append(site_dict['position'])
+
+        # For calculations with a truly periodic cell, such as solid state calculations,
+        # coordinates must be converted into fractional coordinates
+        if add_cell:
+            cell = inputs.structure.cell
+            inv_cell = np.linalg.inv(cell)
+            atom_coords_fractional = []
+            for coords_cart in atom_coords_cartesian:
+                atom_coords_fractional.append(np.dot(coords_cart, inv_cell))
+
+        cell_lengths = inputs.structure.cell_lengths
+        cell_angles = inputs.structure.cell_angles
+
+        input_str = ''
+
+        # Echo the input file in the output
+        input_str += 'echo\n'
+        # Title
+        input_str += f'start {abbreviation}\ntitle "{title}\"\n'
+        # Memory
+        input_str += f'memory {memory} mb\n'
+        # Cell
+        input_str += 'geometry units angstroms noautoz noautosym\n'
+        if add_cell:
+            input_str += '  system crystal\n'
+            input_str += '    lat_a {}\n    lat_b {}\n    lat_c {}\n'.format(*cell_lengths)
+            input_str += '    alpha {}\n    beta  {}\n    gamma {}\n'.format(*cell_angles)
+            input_str += '  end\n'
+        if symmetry:
+            input_str += f'  symmetry {symmetry}\n'
+        # Coordinates
+        if add_cell:
+            atom_coords = atom_coords_fractional
+        else:
+            atom_coords = atom_coords_cartesian
+        for kind, coords in zip(atom_kinds, atom_coords):
+            input_str += '  {} {} {} {}\n'.format(kind, *coords)
+        input_str += 'end\n'
+        # Basis
+        if basis:
+            input_str += 'basis\n'
+            for atom_type,basis_name in basis.items():
+                input_str += f'  {atom_type} {basis_name}\n'
+            input_str += 'end\n'
+
+        # Additional free-form parameters
+        def convert_parameters(parameters, indent):
+            for key, value in parameters.items():
+                if isinstance(value, dict):
+                    input_str += ' '*4*indent + f'{key}\n'
+                    convert_parameters(value, indent+1)
+                    input_str += ' '*4*indent+'end\n'
+                else:
+                    input_str += ' '*4*indent + f'{key} {value}\n'
+        convert_parameters(parameters, indent=0)
+
+        # Any 'set' commands
+        if set_commands:
+            for key, value in set_commands.items():
+                input_str += f'set {key} {value}\n'
+
+        # Add the task as the final line
+        if task:
+            input_str += f'task {task}\n'
+
+        return input_str
