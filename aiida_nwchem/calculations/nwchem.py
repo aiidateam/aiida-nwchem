@@ -211,16 +211,7 @@ class NwchemCalculation(NwchemBaseCalculation):
                 input_str += f'  {atom_type} {basis_name}\n'
             input_str += 'end\n'
 
-        # Additional free-form parameters
-        def convert_parameters(parameters, indent):
-            for key, value in parameters.items():
-                if isinstance(value, dict):
-                    input_str += ' '*4*indent + f'{key}\n'
-                    convert_parameters(value, indent+1)
-                    input_str += ' '*4*indent+'end\n'
-                else:
-                    input_str += ' '*4*indent + f'{key} {value}\n'
-        convert_parameters(parameters, indent=0)
+        input_str = _convert_parameters(parameters, indent=0, input_str=input_str)
 
         # Any 'set' commands
         if set_commands:
@@ -232,3 +223,17 @@ class NwchemCalculation(NwchemBaseCalculation):
             input_str += f'task {task}\n'
 
         return input_str
+
+
+
+# Additional free-form parameters
+def _convert_parameters(parameters, indent, input_str):
+    for key, value in parameters.items():
+        if isinstance(value, dict):
+            input_str += ' '*4*indent + f'{key}\n'
+            input_str = _convert_parameters(value, indent+1, input_str=input_str)
+            input_str += ' '*4*indent+'end\n'
+        else:
+            input_str += ' '*4*indent + f'{key} {value}\n'
+
+    return input_str
