@@ -19,6 +19,8 @@ from ase import Atoms
 
 NwchemCalculation = CalculationFactory('nwchem.base')
 
+__all__ = ('NwchemBaseParser', )
+
 
 class NwchemBaseParser(Parser):
     """
@@ -208,7 +210,7 @@ class NwchemBaseParser(Parser):
                         r'^ Task  times  cpu:\s+[0-9.]+s\s+wall:\s+[0-9.]+s$',
                         line):
                     in_task = False
-                    # If we didn't find a task, then this must be an energy type calculation 
+                    # If we didn't find a task, then this must be an energy type calculation
                     # (or another that we do not support!)
                     if task_dict['task_type'] is None:
                         task_dict['task_type'] = 'energy'
@@ -609,17 +611,17 @@ class NwchemBaseParser(Parser):
                                      result.group(1).strip().lower())
                         task_dict['entropy'][key] = result.group(2)
                         continue
-                    elif result.group(
+                    if result.group(
                             1) == 'Cv (constant volume heat capacity)':
                         state = 'final-cv'
                         task_dict['heat_capacity'] = {}
                         task_dict['heat_capacity']['total'] = result.group(2)
                         continue
-                    else:
-                        key = re.sub('[^a-zA-Z0-9]+', '_',
-                                     result.group(1).strip().lower())
-                        task_dict[key] = result.group(2)
-                        continue
+
+                    key = re.sub('[^a-zA-Z0-9]+', '_',
+                                    result.group(1).strip().lower())
+                    task_dict[key] = result.group(2)
+                    continue
                 # Derivative Dipole
                 if re.search('Projected Derivative Dipole', line):
                     state = 'final-freq-results-dipole'

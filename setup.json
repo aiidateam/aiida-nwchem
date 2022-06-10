@@ -30,7 +30,8 @@
     "extras_require": {
         "pre-commit": [
             "pre-commit~=2.2",
-            "pylint~=2.11.1"
+            "pylint~=2.11.1",
+            "mypy"
         ],
         "tests": [
             "pgtest~=1.3",
