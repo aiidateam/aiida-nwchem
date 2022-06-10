@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
 """Calculation classes for aiida-nwchem."""
+import re
+
 import numpy as np
 from aiida import orm
 from aiida.common.datastructures import CalcInfo, CodeInfo
 from aiida.engine import CalcJob
+
+__all__ = ('NwchemBaseCalculation', 'NwchemCalculation')
 
 
 def validate_parameters(value, ctx=None):  # pylint: disable=unused-argument
@@ -18,6 +22,7 @@ class NwchemBaseCalculation(CalcJob):
 
     # Default input and output files
     _DEFAULT_INPUT_FILE = 'aiida.in'
+    _DEFAULT_ABBREVIATION = 'aiida'  # files will be named aiida.db, ...
     _DEFAULT_OUTPUT_FILE = 'aiida.out'
     _DEFAULT_ERROR_FILE = 'aiida.err'
 
@@ -27,7 +32,7 @@ class NwchemBaseCalculation(CalcJob):
         # yapf: disable
         super().define(spec)
         spec.input('input_file', valid_type=orm.SinglefileData, required=True, help='NWChem input file')
-        spec.input('remote_folder', valid_type=(orm.RemoteData, orm.FolderData), required=False,
+        spec.input('restart_folder', valid_type=(orm.RemoteData, orm.FolderData), required=False,
              help='Remote directory of a completed NWChem calculation to restart from.')
 
         spec.inputs['metadata']['options']['withmpi'].default = True
@@ -62,7 +67,7 @@ class NwchemBaseCalculation(CalcJob):
         spec.exit_code(350, 'ERROR_UNEXPECTED_PARSER_EXCEPTION',
             message='The parser raised an unexpected exception.')
         spec.exit_code(401, 'ERROR_NON_PERIODIC_CELL',
-            message='A simulation cell was requested but the structure provided has at least one non periodic dimension.')
+            message='A simulation cell was requested but the structure has at least one non-periodic dimension.')
 
         # yapf: enable
 
@@ -76,8 +81,8 @@ class NwchemBaseCalculation(CalcJob):
         """
 
         input_filename = folder.get_abs_path(self._DEFAULT_INPUT_FILE)
-        with open(input_filename, 'w') as f:
-            f.write(self._get_input_file())
+        with open(input_filename, 'w') as handle:
+            handle.write(self._get_input_file())
 
         _default_commandline_params = [self._DEFAULT_INPUT_FILE]
         codeinfo = CodeInfo()
@@ -96,6 +101,35 @@ class NwchemBaseCalculation(CalcJob):
             self._DEFAULT_OUTPUT_FILE, self._DEFAULT_ERROR_FILE
         ]
         calcinfo.retrieve_singlefile_list = []
+
+        # Symlinks.
+        calcinfo.remote_symlink_list = []
+        calcinfo.remote_copy_list = []
+        if 'restart_folder' in self.inputs:
+            comp_uuid = self.inputs.restart_folder.computer.uuid
+            remote_path = self.inputs.restart_folder.get_remote_path()
+            # Note: this opens a transport but we need to know which files are there
+            files = self.inputs.restart_folder.listdir()
+
+            for extension in ('db', 'movecs', 't1amp', 't2amp'):
+                # catch files like aiida.db, aiida.t1amp.0001
+                rgxp = re.compile(r'.+\.' + extension + r'\.?\d*')
+                files_to_link = filter(rgxp.match, files)
+
+                copy_infos = []
+                for file_to_link in files_to_link:
+                    copy_infos.append(
+                        (comp_uuid, remote_path + f'/{file_to_link}',
+                         file_to_link))
+
+                # If running on the same computer - make a symlink.
+                # Except for .db files: Those are typically small, and written/added to
+                # by follow-up calculations. Symlinks can therefore lead to confusing results.
+                if self.inputs.code.computer.uuid == comp_uuid and extension != 'db':
+                    calcinfo.remote_symlink_list += copy_infos
+                # If not - copy the folder.
+                else:
+                    calcinfo.remote_copy_list += copy_infos
 
         return calcinfo
 
@@ -140,7 +174,7 @@ class NwchemCalculation(NwchemBaseCalculation):
         """
         if self.inputs.add_cell:
             if self.inputs.structure.pbc != (True, True, True): # Any dimension not periodic
-                return self.exit_codes.ERROR_NON_PERIODIC_CELL
+                return self.exit_codes.ERROR_NON_PERIODIC_CELL  # pylint: disable=no-member
 
         return super().prepare_for_submission(folder)
 
@@ -151,7 +185,7 @@ class NwchemCalculation(NwchemBaseCalculation):
         """
         inputs = self.inputs
         parameters = inputs.parameters.get_dict()
-        abbreviation = parameters.pop('abbreviation','aiida_calc')
+        abbreviation = parameters.pop('abbreviation', self._DEFAULT_ABBREVIATION)
         title = parameters.pop('title','AiiDA NWChem calculation')
         memory = inputs.metadata.options.total_memory
         basis = parameters.pop('basis',None)
@@ -184,7 +218,10 @@ class NwchemCalculation(NwchemBaseCalculation):
         # Echo the input file in the output
         input_str += 'echo\n'
         # Title
-        input_str += f'start {abbreviation}\ntitle "{title}\"\n'
+        if 'restart_folder' in inputs:
+            input_str += f'restart {abbreviation}\ntitle "{title}\"\n'
+        else:
+            input_str += f'start {abbreviation}\ntitle "{title}\"\n'
         # Memory
         input_str += f'memory {memory} mb\n'
         # Cell
@@ -228,6 +265,7 @@ class NwchemCalculation(NwchemBaseCalculation):
 
 # Additional free-form parameters
 def _convert_parameters(parameters, indent, input_str):
+    """Helper function to write out any further parameters passed."""
     for key, value in parameters.items():
         if isinstance(value, dict):
             input_str += ' '*4*indent + f'{key}\n'
