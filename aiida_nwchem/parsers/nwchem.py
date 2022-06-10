@@ -7,8 +7,7 @@
 # For further information on the license, see the LICENSE.txt file        #
 # For further information please visit http://www.aiida.net               #
 ###########################################################################
-from __future__ import absolute_import
-
+"""Parsers for aiida-nwchem"""
 import re
 
 import numpy as np
@@ -18,7 +17,7 @@ from aiida.parsers import Parser
 from aiida.plugins import CalculationFactory
 from ase import Atoms
 
-NwchemCalculation = CalculationFactory('nwchem.nwchem')
+NwchemCalculation = CalculationFactory('nwchem.base')
 
 
 class NwchemBaseParser(Parser):
@@ -209,7 +208,8 @@ class NwchemBaseParser(Parser):
                         r'^ Task  times  cpu:\s+[0-9.]+s\s+wall:\s+[0-9.]+s$',
                         line):
                     in_task = False
-                    # If we didn't find a task, then this must be an energy type calculation (or another that we do not support!)
+                    # If we didn't find a task, then this must be an energy type calculation 
+                    # (or another that we do not support!)
                     if task_dict['task_type'] is None:
                         task_dict['task_type'] = 'energy'
                     last_line = index
