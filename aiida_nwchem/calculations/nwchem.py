@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Calculation classes for aiida-nwchem."""
 import re
+from importlib import invalidate_caches
 
 import numpy as np
 from aiida import orm
@@ -51,21 +52,23 @@ class NwchemBaseCalculation(CalcJob):
         spec.default_output_node = 'output_parameters'
 
         # Standard exceptions
+        spec.exit_code(300, 'ERROR_MISSING_OUTPUT_FILES',
+            message='Required output files are missing.', invalidates_cache=True)
         spec.exit_code(301, 'ERROR_NO_RETRIEVED_TEMPORARY_FOLDER',
-            message='The retrieved temporary folder could not be accessed.')
+            message='The retrieved temporary folder could not be accessed.', invalidates_cache=True)
         spec.exit_code(302, 'ERROR_OUTPUT_STDOUT_MISSING',
-            message='The retrieved folder did not contain the required stdout output file.')
+            message='The retrieved folder did not contain the required stdout output file.', invalidates_cache=True)
         spec.exit_code(310, 'ERROR_OUTPUT_STDOUT_READ',
-            message='The stdout output file could not be read.')
+            message='The stdout output file could not be read.', invalidates_cache=True)
         spec.exit_code(312, 'ERROR_OUTPUT_STDOUT_INCOMPLETE',
-            message='The stdout output file was incomplete.')
+            message='The stdout output file was incomplete.', invalidate_cache=True)
         spec.exit_code(313, 'ERROR_MULTIPLE_CALCULATIONS',
             message='The stdout contains multiple calculations')
         spec.exit_code(340, 'ERROR_OUT_OF_WALLTIME_INTERRUPTED',
             message='The calculation stopped prematurely because it ran out of walltime but the job was killed by the '
-                    'scheduler before the files were safely written to disk for a potential restart.')
+                    'scheduler before the files were safely written to disk for a potential restart.', invalidates_cache=True)
         spec.exit_code(350, 'ERROR_UNEXPECTED_PARSER_EXCEPTION',
-            message='The parser raised an unexpected exception.')
+            message='The parser raised an unexpected exception.', invalidates_cache=True)
         spec.exit_code(401, 'ERROR_NON_PERIODIC_CELL',
             message='A simulation cell was requested but the structure has at least one non-periodic dimension.')
 
