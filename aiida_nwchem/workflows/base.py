@@ -36,5 +36,4 @@ class NwchemBaseWorkChain(BaseRestartWorkChain):
         internal loop.
         """
         super().setup()
-        self.ctx.inputs = AttributeDict(
-            self.exposed_inputs(NwchemCalculation, 'nwchem'))
+        self.ctx.inputs = AttributeDict(self.exposed_inputs(NwchemCalculation, 'nwchem'))

@@ -19,8 +19,7 @@ def filepath_data():
 @pytest.fixture
 def nwchem_code(aiida_local_code_factory):
     """Return a code configured for the ``nwchem.nwchem`` plugin."""
-    code = aiida_local_code_factory(entry_point='nwchem.nwchem',
-                                    executable='nwchem')
+    code = aiida_local_code_factory(entry_point='nwchem.nwchem', executable='nwchem')
     code.computer.set_default_mpiprocs_per_machine(1)
     return code
 

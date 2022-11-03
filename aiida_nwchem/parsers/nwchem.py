@@ -19,7 +19,7 @@ import numpy as np
 
 NwchemCalculation = CalculationFactory('nwchem.base')
 
-__all__ = ('NwchemBaseParser', )
+__all__ = ('NwchemBaseParser',)
 
 
 class NwchemBaseParser(Parser):
@@ -63,9 +63,7 @@ class NwchemBaseParser(Parser):
         files_expected = [output_filename]
         # Note: set(A) <= set(B) checks whether A is a subset of B
         if not set(files_expected) <= set(files_retrieved):
-            self.logger.error(
-                f"Found files '{files_retrieved}', expected to find '{files_expected}'"
-            )
+            self.logger.error(f"Found files '{files_retrieved}', expected to find '{files_expected}'")
             return self.exit_codes.ERROR_MISSING_OUTPUT_FILES
 
         # Read output file
@@ -164,8 +162,7 @@ class NwchemBaseParser(Parser):
                 first_line = index
                 task_dict = {
                     'task_type': None,  # We do not know the task type yet
-                    'theory_type':
-                    None,  # We also do not yet know the theory used
+                    'theory_type': None,  # We also do not yet know the theory used
                     'lines': [],
                 }
 
@@ -176,9 +173,7 @@ class NwchemBaseParser(Parser):
                 if re.match(r'^\s*NWChem Geometry Optimization\s*$', line):
                     task_dict['task_type'] = 'geoopt'
                     continue
-                if re.match(
-                        r'^\s*NWChem Nuclear Hessian and Frequency Analysis\s*$',
-                        line):
+                if re.match(r'^\s*NWChem Nuclear Hessian and Frequency Analysis\s*$', line):
                     task_dict['task_type'] = 'freq'
                     continue
 
@@ -195,16 +190,12 @@ class NwchemBaseParser(Parser):
                 if re.match(r'^[\s\*]*NWPW PSPW Calculation[\s\*]*$', line):
                     task_dict['theory_type'] = 'nwpw_pspw'
                     continue
-                if re.match(
-                        r'^[\s]+NWChem Extensible Many-Electron Theory Module[\s]*$',
-                        line):
+                if re.match(r'^[\s]+NWChem Extensible Many-Electron Theory Module[\s]*$', line):
                     task_dict['theory_type'] = 'tce'
                     continue
 
                 # Check if we've hit the end of the task block
-                if re.match(
-                        r'^ Task  times  cpu:\s+[0-9.]+s\s+wall:\s+[0-9.]+s$',
-                        line):
+                if re.match(r'^ Task  times  cpu:\s+[0-9.]+s\s+wall:\s+[0-9.]+s$', line):
                     in_task = False
                     # If we didn't find a task, then this must be an energy type calculation
                     # (or another that we do not support!)
@@ -241,15 +232,12 @@ class NwchemBaseParser(Parser):
             if state == 'final-results':
                 result = re.match(r'^\s*([^=]+?)\s*=\s*([\-\d\.]+)$', line)
                 if result:
-                    key = re.sub(r'[^a-zA-Z0-9]+', '_',
-                                 result.group(1).lower())
+                    key = re.sub(r'[^a-zA-Z0-9]+', '_', result.group(1).lower())
                     result_dict[key] = result.group(2)
 
             # End of task
             if re.match('^ Task  times  cpu:', line):
-                result = re.match(
-                    r'^ Task  times  cpu:\s*([\d\.\d]+)s\s*wall:\s*([\d\.\d]+)s',
-                    line)
+                result = re.match(r'^ Task  times  cpu:\s*([\d\.\d]+)s\s*wall:\s*([\d\.\d]+)s', line)
                 result_dict['cpu_time'] = result.group(1)
                 result_dict['wall_time'] = result.group(2)
                 break
@@ -279,15 +267,12 @@ class NwchemBaseParser(Parser):
             if state == 'final-results':
                 result = re.match(r'^\s*([^=]+?)\s*=\s*([\-\d\.]+)$', line)
                 if result:
-                    key = re.sub(r'[^a-zA-Z0-9]+', '_',
-                                 result.group(1).lower())
+                    key = re.sub(r'[^a-zA-Z0-9]+', '_', result.group(1).lower())
                     result_dict[key] = result.group(2)
 
             # End of task
             if re.match('^ Task  times  cpu:', line):
-                result = re.match(
-                    r'^ Task  times  cpu:\s*([\d\.\d]+)s\s*wall:\s*([\d\.\d]+)s',
-                    line)
+                result = re.match(r'^ Task  times  cpu:\s*([\d\.\d]+)s\s*wall:\s*([\d\.\d]+)s', line)
                 result_dict['cpu_time'] = result.group(1)
                 result_dict['wall_time'] = result.group(2)
                 break
@@ -316,29 +301,19 @@ class NwchemBaseParser(Parser):
 
             # Gather energies
             if state == 'final-results':
-                result = re.match(
-                    r'^\s*([A-z\s.-]+)[\s:]+([0-9.E+-]+)\s*\([0-9a-zA-Z.+\/\s-]*\)\s*$',
-                    line)
+                result = re.match(r'^\s*([A-z\s.-]+)[\s:]+([0-9.E+-]+)\s*\([0-9a-zA-Z.+\/\s-]*\)\s*$', line)
                 if result:
-                    key = re.sub(r'[^a-zA-Z0-9]+', '_',
-                                 result.group(1).strip().lower())
+                    key = re.sub(r'[^a-zA-Z0-9]+', '_', result.group(1).strip().lower())
                     result_dict[key] = float(result.group(2))
 
             # Forces
-            result = re.match(
-                r'^\s+[0-9]+[\sA-z\(]+([0-9\-.]+)\s+([0-9\-.]+)\s+([0-9\-.]+)\s+\)$',
-                line)
+            result = re.match(r'^\s+[0-9]+[\sA-z\(]+([0-9\-.]+)\s+([0-9\-.]+)\s+([0-9\-.]+)\s+\)$', line)
             if result:
-                forces.append(
-                    [result.group(1),
-                     result.group(2),
-                     result.group(3)])
+                forces.append([result.group(1), result.group(2), result.group(3)])
 
             # End of task
             if re.match('^ Task  times  cpu:', line):
-                result = re.match(
-                    r'^ Task  times  cpu:\s*([\d\.\d]+)s\s*wall:\s*([\d\.\d]+)s',
-                    line)
+                result = re.match(r'^ Task  times  cpu:\s*([\d\.\d]+)s\s*wall:\s*([\d\.\d]+)s', line)
                 result_dict['cpu_time'] = result.group(1)
                 result_dict['wall_time'] = result.group(2)
                 break
@@ -370,29 +345,19 @@ class NwchemBaseParser(Parser):
 
             # Gather energies
             if state == 'final-results':
-                result = re.match(
-                    r'^\s*([A-z][A-z\s.-]+)[\s:]+([0-9.E+-]+)\s*\([0-9a-zA-Z.+\/\s-]*\)\s*$',
-                    line)
+                result = re.match(r'^\s*([A-z][A-z\s.-]+)[\s:]+([0-9.E+-]+)\s*\([0-9a-zA-Z.+\/\s-]*\)\s*$', line)
                 if result:
-                    key = re.sub(r'[^a-zA-Z0-9]+', '_',
-                                 result.group(1).strip().lower())
+                    key = re.sub(r'[^a-zA-Z0-9]+', '_', result.group(1).strip().lower())
                     result_dict[key] = float(result.group(2))
 
             # Forces
-            result = re.match(
-                r'^\s+[0-9]+[\sA-z\(]+([0-9\-.]+)\s+([0-9\-.]+)\s+([0-9\-.]+)\s+\)$',
-                line)
+            result = re.match(r'^\s+[0-9]+[\sA-z\(]+([0-9\-.]+)\s+([0-9\-.]+)\s+([0-9\-.]+)\s+\)$', line)
             if result:
-                forces.append(
-                    [result.group(1),
-                     result.group(2),
-                     result.group(3)])
+                forces.append([result.group(1), result.group(2), result.group(3)])
 
             # End of task
             if re.match('^ Task  times  cpu:', line):
-                result = re.match(
-                    r'^ Task  times  cpu:\s*([\d\.\d]+)s\s*wall:\s*([\d\.\d]+)s',
-                    line)
+                result = re.match(r'^ Task  times  cpu:\s*([\d\.\d]+)s\s*wall:\s*([\d\.\d]+)s', line)
                 result_dict['cpu_time'] = result.group(1)
                 result_dict['wall_time'] = result.group(2)
                 break
@@ -414,8 +379,7 @@ class NwchemBaseParser(Parser):
 
         for line in lines:
 
-            result = re.match(r'^[\s]+Wavefunction type :([A-z\s-]+)\s*$',
-                              line)
+            result = re.match(r'^[\s]+Wavefunction type :([A-z\s-]+)\s*$', line)
             if result:
                 result_dict['wavefunction_type'] = result.group(1).strip()
 
@@ -423,13 +387,11 @@ class NwchemBaseParser(Parser):
             if result:
                 result_dict['spin_multiplicity'] = result.group(1)
 
-            result = re.match(r'^\s+Number of AO functions :\s*([0-9]+)$',
-                              line)
+            result = re.match(r'^\s+Number of AO functions :\s*([0-9]+)$', line)
             if result:
                 result_dict['number_of_AO_functions'] = result.group(1)
 
-            result = re.match(r'^[\s]+Calculation type :([A-z\s,&-]+)\s*$',
-                              line)
+            result = re.match(r'^[\s]+Calculation type :([A-z\s,&-]+)\s*$', line)
             if result:
                 result_dict['calculation_type'] = result.group(1).strip()
 
@@ -438,15 +400,12 @@ class NwchemBaseParser(Parser):
             if state == 'final-results':
                 result = re.match(r'^\s*([^=]+?)\s*=\s*([\-\d\.]+)$', line)
                 if result:
-                    key = re.sub(r'[^a-zA-Z0-9]+', '_',
-                                 result.group(1).lower())
+                    key = re.sub(r'[^a-zA-Z0-9]+', '_', result.group(1).lower())
                     result_dict[key] = result.group(2)
 
             # End of task
             if re.match('^ Task  times  cpu:', line):
-                result = re.match(
-                    r'^ Task  times  cpu:\s*([\d\.\d]+)s\s*wall:\s*([\d\.\d]+)s',
-                    line)
+                result = re.match(r'^ Task  times  cpu:\s*([\d\.\d]+)s\s*wall:\s*([\d\.\d]+)s', line)
                 result_dict['cpu_time'] = result.group(1)
                 result_dict['wall_time'] = result.group(2)
                 break
@@ -501,13 +460,11 @@ class NwchemBaseParser(Parser):
             if state == 'final-coords':
                 result = re.match(
                     r'^\s*[\d]+\s*([a-zA-Z]+)\s*[\-\d\.]+'
-                    r'\s*([\-\d\.]+)\s*([\-\d\.]+)\s*([\-\d\.]+)$', line)
+                    r'\s*([\-\d\.]+)\s*([\-\d\.]+)\s*([\-\d\.]+)$', line
+                )
                 if result:
                     symbols.append(result.group(1))
-                    positions.append(
-                        [result.group(2),
-                         result.group(3),
-                         result.group(4)])
+                    positions.append([result.group(2), result.group(3), result.group(4)])
                     continue
                 if re.match(r'^\s*lattice vectors in angstroms', line):
                     state = 'final-cell'
@@ -520,20 +477,13 @@ class NwchemBaseParser(Parser):
                 if re.match(r'^\s*reciprocal lattice vectors', line):
                     state = 'final-results'
                     continue
-                result = re.match(
-                    r'^\s*a[1-3]=<\s*([\d\.\d]+)\s*([\d\.\d]+)\s*([\d\.\d]+)',
-                    line)
+                result = re.match(r'^\s*a[1-3]=<\s*([\d\.\d]+)\s*([\d\.\d]+)\s*([\d\.\d]+)', line)
                 if result:
-                    cell.append(
-                        [result.group(1),
-                         result.group(2),
-                         result.group(3)])
+                    cell.append([result.group(1), result.group(2), result.group(3)])
                 continue
 
             if re.match(r'^ Task  times  cpu:', line):
-                result = re.match(
-                    r'^ Task  times  cpu:\s*([\d\.\d]+)s\s*wall:\s*([\d\.\d]+)s',
-                    line)
+                result = re.match(r'^ Task  times  cpu:\s*([\d\.\d]+)s\s*wall:\s*([\d\.\d]+)s', line)
                 result_dict['cpu_time'] = result.group(1)
                 result_dict['wall_time'] = result.group(2)
                 break
@@ -552,9 +502,7 @@ class NwchemBaseParser(Parser):
                     first_line = index
                     continue
         final_energy_lines = task_lines[first_line:last_line]
-        final_energy_dict = self.parse_energy(final_energy_lines,
-                                              theory_type,
-                                              create_node=False)
+        final_energy_dict = self.parse_energy(final_energy_lines, theory_type, create_node=False)
 
         result_dict['final_energy'] = final_energy_dict
 
@@ -572,10 +520,7 @@ class NwchemBaseParser(Parser):
             cell = (1., 1., 1.)
         else:
             cell = np.array(cell, np.float64)
-        self.out(
-            'output_structure',
-            orm.StructureData(
-                ase=Atoms(symbols=symbols, positions=positions, cell=cell)))
+        self.out('output_structure', orm.StructureData(ase=Atoms(symbols=symbols, positions=positions, cell=cell)))
 
     def parse_freq(self, task_lines, theory_type):
         # pylint: disable=unused-argument
@@ -602,8 +547,7 @@ class NwchemBaseParser(Parser):
                     if result.group(1).strip() == 'Total Entropy':
                         state = 'final-entropy'
                         task_dict['entropy'] = {}
-                        key = re.sub('[^a-zA-Z0-9]+', '_',
-                                     result.group(1).strip().lower())
+                        key = re.sub('[^a-zA-Z0-9]+', '_', result.group(1).strip().lower())
                         task_dict['entropy'][key] = result.group(2)
                         continue
                     if result.group(1) == 'Cv (constant volume heat capacity)':
@@ -612,8 +556,7 @@ class NwchemBaseParser(Parser):
                         task_dict['heat_capacity']['total'] = result.group(2)
                         continue
 
-                    key = re.sub('[^a-zA-Z0-9]+', '_',
-                                 result.group(1).strip().lower())
+                    key = re.sub('[^a-zA-Z0-9]+', '_', result.group(1).strip().lower())
                     task_dict[key] = result.group(2)
                     continue
                 # Derivative Dipole
@@ -629,39 +572,31 @@ class NwchemBaseParser(Parser):
                     continue
             # Entropy
             if state == 'final-entropy':
-                result = re.match(r'^\s*-\s([A-z\s\(\)]+)\s+=\s*([\d\.]+)',
-                                  line)
+                result = re.match(r'^\s*-\s([A-z\s\(\)]+)\s+=\s*([\d\.]+)', line)
                 if result:
-                    key = re.sub(r'[^a-zA-Z0-9]+', '_',
-                                 result.group(1).strip().lower())
+                    key = re.sub(r'[^a-zA-Z0-9]+', '_', result.group(1).strip().lower())
                     task_dict['entropy'][key] = result.group(2)
                 else:
                     state = 'final-results'
                     continue
             # Heat capacity
             if state == 'final-cv':
-                result = re.match(r'^\s*-\s([A-z\s\(\)]+)\s*=\s*([\d\.]+)',
-                                  line)
+                result = re.match(r'^\s*-\s([A-z\s\(\)]+)\s*=\s*([\d\.]+)', line)
                 if result:
-                    key = re.sub('[^a-zA-Z0-9]+', '_',
-                                 result.group(1).strip().lower())
+                    key = re.sub('[^a-zA-Z0-9]+', '_', result.group(1).strip().lower())
                     task_dict['heat_capacity'][key] = result.group(2)
                 else:
                     state = 'final-results'
                     continue
             # Parse dipole data
             if state == 'final-freq-results-dipole':
-                result = re.match(
-                    r'^\s*[\d]\s*([\-\d\.]+)\s*\|\|'
-                    r'\s*([-\d.]+)\s*([-\d.]+)\s*([-\d.]+)$', line)
+                result = re.match(r'^\s*[\d]\s*([\-\d\.]+)\s*\|\|'
+                                  r'\s*([-\d.]+)\s*([-\d.]+)\s*([-\d.]+)$', line)
                 if result:
                     # Get vibrational eigenvalues (cm^-1)
                     frequencies.append(result.group(1))
                     # Get dipole moments (cartesian, debye/angs)
-                    dipoles_list.append(
-                        [result.group(2),
-                         result.group(3),
-                         result.group(4)])
+                    dipoles_list.append([result.group(2), result.group(3), result.group(4)])
                     continue
                 if re.match(r'^\s-+$', line):
                     state = 'final-results'
@@ -672,7 +607,8 @@ class NwchemBaseParser(Parser):
             if state == 'final-freq-results-ir':
                 result = re.match(
                     r'^\s*[\d]\s*[\-\d\.]+\s*\|\|\s*([-\d.]+)'
-                    r'\s*([-\d.]+)\s*([-\d.]+)\s*([-\d.]+)$', line)
+                    r'\s*([-\d.]+)\s*([-\d.]+)\s*([-\d.]+)$', line
+                )
                 if result:
                     # Get intensity (arbitrary units)
                     intensities.append(result.group(4))
@@ -683,9 +619,8 @@ class NwchemBaseParser(Parser):
                     continue
             # End of task
             if re.match('^ Task  times  cpu:', line):
-                result = re.match(
-                    r'^ Task  times  cpu:\s*([\d\.\d]+)s'
-                    r'\s*wall:\s*([\d\.\d]+)s', line)
+                result = re.match(r'^ Task  times  cpu:\s*([\d\.\d]+)s'
+                                  r'\s*wall:\s*([\d\.\d]+)s', line)
                 task_dict['cpu_time'] = result.group(1)
                 task_dict['wall_time'] = result.group(2)
                 break

@@ -67,10 +67,8 @@ class BasenwcParser(Parser):
         error_path = None
 
         if self._calc._DEFAULT_OUTPUT_FILE in list_of_files:
-            output_path = os.path.join(out_folder.get_abs_path('.'),
-                                       self._calc._DEFAULT_OUTPUT_FILE)
+            output_path = os.path.join(out_folder.get_abs_path('.'), self._calc._DEFAULT_OUTPUT_FILE)
         if self._calc._DEFAULT_ERROR_FILE in list_of_files:
-            error_path = os.path.join(out_folder.get_abs_path('.'),
-                                      self._calc._DEFAULT_ERROR_FILE)
+            error_path = os.path.join(out_folder.get_abs_path('.'), self._calc._DEFAULT_ERROR_FILE)
 
         return output_path, error_path
