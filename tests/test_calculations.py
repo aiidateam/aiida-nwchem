@@ -3,8 +3,6 @@
 from aiida import engine, orm, plugins
 import pytest
 
-from . import DATA_DIR
-
 
 def test_h2o(nwchem_code, h2o):
     """Test running NWChem on H2O."""
@@ -29,12 +27,12 @@ def test_h2o(nwchem_code, h2o):
     assert pytest.approx(parameters['total_dft_energy'], 0.1, -74.38)
 
 
-def test_h2o_base(nwchem_code):
+def test_h2o_base(nwchem_code, filepath_data):
     """Test running NWChem on H2O using plain input file."""
     builder = plugins.CalculationFactory('nwchem.base').get_builder()
     builder.code = nwchem_code
     builder.metadata.options.resources = {'num_machines': 1}
-    with open(DATA_DIR / 'h2o.inp', 'rb') as handle:
+    with open(filepath_data / 'h2o.inp', 'rb') as handle:
         builder.input_file = orm.SinglefileData(handle, filename='h2o.inp')
 
     result = engine.run(builder)
