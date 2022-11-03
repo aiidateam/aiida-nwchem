@@ -7,7 +7,7 @@ import pytest
 
 pytest_plugins = ['aiida.manage.tests.pytest_fixtures']  # pylint: disable=invalid-name
 
-StructureData = DataFactory('structure')
+StructureData = DataFactory('core.structure')
 
 
 @pytest.fixture
@@ -21,6 +21,7 @@ def nwchem_code(aiida_local_code_factory):
     """Return a code configured for the ``nwchem.nwchem`` plugin."""
     code = aiida_local_code_factory(entry_point='nwchem.nwchem', executable='nwchem')
     code.computer.set_default_mpiprocs_per_machine(1)
+    code.computer.set_default_memory_per_machine(None)
     return code
 
 

@@ -59,7 +59,7 @@ class NwchemBaseParser(Parser):
         output_filename = self.node.get_option('output_filename')
 
         # Check that folder content is as expected
-        files_retrieved = self.retrieved.list_object_names()
+        files_retrieved = self.retrieved.base.repository.list_object_names()
         files_expected = [output_filename]
         # Note: set(A) <= set(B) checks whether A is a subset of B
         if not set(files_expected) <= set(files_retrieved):
@@ -68,7 +68,7 @@ class NwchemBaseParser(Parser):
 
         # Read output file
         self.logger.info(f"Parsing '{output_filename}'")
-        with self.retrieved.open(output_filename, 'r') as fhandle:
+        with self.retrieved.base.repository.open(output_filename, 'r') as fhandle:
             all_lines = [line.strip('\n') for line in fhandle.readlines()]
 
         # Check if NWChem finished:

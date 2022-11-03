@@ -17,15 +17,15 @@ classifiers = [
     'Operating System :: POSIX :: Linux',
     'Operating System :: MacOS :: MacOS X',
     'Programming Language :: Python',
-    'Programming Language :: Python :: 3.6',
-    'Programming Language :: Python :: 3.7',
     'Programming Language :: Python :: 3.8',
+    'Programming Language :: Python :: 3.9',
+    'Programming Language :: Python :: 3.10',
     'Topic :: Scientific/Engineering'
 ]
 keywords = ['aiida', 'workflows', 'nwchem']
-requires-python = '>=3.6'
+requires-python = '>=3.8'
 dependencies = [
-    'aiida-core[atomic_tools]>=1.2.1',
+    'aiida-core[atomic_tools]~=2.0',
     'numpy',
 ]
 
@@ -123,8 +123,14 @@ good-names = [
 ]
 docstring-min-length = 5
 
-[tool.pylint.design]
-max-locals = 20
+[tool.pytest.ini_options]
+minversion = '6.0'
+testpaths = [
+    'tests',
+]
+filterwarnings = [
+    'ignore:Creating AiiDA configuration folder.*:UserWarning'
+]
 
 [tool.yapf]
 align_closing_bracket_with_visual_indent = true

@@ -15,7 +15,7 @@ DFT optimisation for a dihydrogen molecule::
     # Gas phase
     builder = NWChemCalculation.get_builder()
     from aiida.plugins import DataFactory
-    StructureData = DataFactory('structure')
+    StructureData = DataFactory('core.structure')
 
     # H2 guess structure
     structure = StructureData()
@@ -23,7 +23,7 @@ DFT optimisation for a dihydrogen molecule::
     structure.append_atom(position=(0.,1.,0.),symbols='H')
 
     Dict = DataFactory('dict')
-    parameters = Dict(dict={
+    parameters = Dict({
         'basis': {'H': 'library 6-31g'},
         'dft':{
             'iterations': 50,
@@ -42,13 +42,13 @@ DFT optimisation for a dihydrogen molecule::
 
 NWPW Band for bulk silicon::
 
-    # NWPW - Si
+    # NWPW - Si
     from aiida.orm import load_node
     si_structure = load_node(421)
     builder.structure = si_structure
 
     Dict = DataFactory('dict')
-    parameters = Dict(dict={
+    parameters = Dict({
         'nwpw': {
             'xc': 'pbe96',
             'lmbfgs': 0,
@@ -79,9 +79,9 @@ Base workflow with NWPW Band::
     base_workchain = WorkflowFactory('nwchem.base')
     builder = base_workchain.get_builder()
 
-    # NWPW
+    # NWPW
     from aiida.plugins import DataFactory
-    StructureData = DataFactory('structure')
+    StructureData = DataFactory('core.structure')
     alat = 4. # angstrom
     cell = [[alat, 0., 0.,],
             [0., alat, 0.,],
@@ -97,7 +97,7 @@ Base workflow with NWPW Band::
 
 
     Dict = DataFactory('dict')
-    parameters = Dict(dict={
+    parameters = Dict({
         'nwpw': {
             'xc': 'pbe96',
         },
@@ -116,9 +116,9 @@ Base workflow with NWPW Band::
 
 CCSDT via TCE::
 
-    # TCE
+    # TCE
     from aiida.plugins import DataFactory
-    StructureData = DataFactory('structure')
+    StructureData = DataFactory('core.structure')
 
     # H2 structure
     structure = StructureData()
@@ -126,7 +126,7 @@ CCSDT via TCE::
     structure.append_atom(position=(0.,1.,0.),symbols='H')
 
     Dict = DataFactory('dict')
-    parameters = Dict(dict={
+    parameters = Dict({
         'basis': {'*': 'library cc-pvtz'},
         'symmetry': 'c1',
         'charge': 0,

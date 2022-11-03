@@ -15,7 +15,7 @@ def test_h2o(nwchem_code, h2o):
 
     result = engine.run(builder)
 
-    with result['retrieved'].open('aiida.out') as handle:
+    with result['retrieved'].base.repository.open('aiida.out') as handle:
         log = handle.read()
 
     assert 'output_parameters' in result, log
@@ -33,7 +33,7 @@ def test_h2o_base(nwchem_code, filepath_data):
 
     result = engine.run(builder)
 
-    with result['retrieved'].open('aiida.out') as handle:
+    with result['retrieved'].base.repository.open('aiida.out') as handle:
         log = handle.read()
 
     assert 'output_parameters' in result, log
@@ -50,14 +50,14 @@ def test_h2o_restart(nwchem_code, h2o):
     builder.parameters = orm.Dict(dict=dict(task='dft', basis={'H': 'library sto-3g', 'O': 'library sto-3g'}))
     builder.add_cell = orm.Bool(True)
     result = engine.run(builder)
-    with result['retrieved'].open('aiida.out') as handle:
+    with result['retrieved'].base.repository.open('aiida.out') as handle:
         log = handle.read()
     assert 'output_parameters' in result, log
 
     # now let's run a new calculation, starting from this one
     builder.restart_folder = result['remote_folder']
     result = engine.run(builder)
-    with result['retrieved'].open('aiida.out') as handle:
+    with result['retrieved'].base.repository.open('aiida.out') as handle:
         log = handle.read()
 
     assert 'status          = restart' in log
