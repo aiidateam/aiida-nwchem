@@ -10,12 +10,12 @@
 """Parsers for aiida-nwchem"""
 import re
 
-import numpy as np
 from aiida import orm
 from aiida.engine import ExitCode
 from aiida.parsers import Parser
 from aiida.plugins import CalculationFactory
 from ase import Atoms
+import numpy as np
 
 NwchemCalculation = CalculationFactory('nwchem.base')
 
@@ -74,7 +74,7 @@ class NwchemBaseParser(Parser):
             all_lines = [line.strip('\n') for line in fhandle.readlines()]
 
         # Check if NWChem finished:
-        #TODO: Handle the case of the 'ignore' keyword
+        #TODO: Handle the case of the 'ignore' keyword  # pylint: disable=fixme
         if not re.search(r'^\sTotal times  cpu:', all_lines[-1]):
             return self.exit_codes.ERROR_OUTPUT_STDOUT_INCOMPLETE
 
@@ -123,15 +123,11 @@ class NwchemBaseParser(Parser):
                     info = ''
                     state = None
                     continue
-                else:
-                    info = line + info  # Order important because we looping backwards
-                    continue
+
+                info = line + info  # Order important because we looping backwards
             else:
                 if re.match(r'^\s-+$', line):
                     state = 'error_info'
-                    continue
-                #else:
-                #    break
 
         # Organise and clean the data a bit
         # Clean up to do
@@ -572,7 +568,7 @@ class NwchemBaseParser(Parser):
             # If the cell is specified, ASE defaults to 0,0,0, which throws an AiiDA
             # error for cell with volume of 0. Here we arbitrarily set the cell.
             # This isn't really satisfactory.
-            # TODO: Look into changing AiiDA test of cell volume.
+            # TODO: Look into changing AiiDA test of cell volume.  # pylint: disable=fixme
             cell = (1., 1., 1.)
         else:
             cell = np.array(cell, np.float64)
@@ -581,9 +577,8 @@ class NwchemBaseParser(Parser):
             orm.StructureData(
                 ase=Atoms(symbols=symbols, positions=positions, cell=cell)))
 
-        return
-
     def parse_freq(self, task_lines, theory_type):
+        # pylint: disable=unused-argument
         """
         Parse a frequency analysis task block
 
@@ -611,15 +606,14 @@ class NwchemBaseParser(Parser):
                                      result.group(1).strip().lower())
                         task_dict['entropy'][key] = result.group(2)
                         continue
-                    if result.group(
-                            1) == 'Cv (constant volume heat capacity)':
+                    if result.group(1) == 'Cv (constant volume heat capacity)':
                         state = 'final-cv'
                         task_dict['heat_capacity'] = {}
                         task_dict['heat_capacity']['total'] = result.group(2)
                         continue
 
                     key = re.sub('[^a-zA-Z0-9]+', '_',
-                                    result.group(1).strip().lower())
+                                 result.group(1).strip().lower())
                     task_dict[key] = result.group(2)
                     continue
                 # Derivative Dipole

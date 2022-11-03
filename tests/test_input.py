@@ -11,11 +11,12 @@
 Tests for the NWChem input plugins.
 """
 
-import pytest
 from aiida import orm
 from aiida.orm.nodes.data.structure import has_ase, has_pymatgen
+import pytest
 
-from aiida_nwchem.calculations.nwcpymatgen import _prepare_pymatgen_dict
+from aiida_nwchem.calculations.nwcpymatgen import \
+    _prepare_pymatgen_dict  # pylint: disable=import-error,no-name-in-module
 
 
 @pytest.mark.skipif(not has_ase(), 'Unable to import ase')
@@ -54,9 +55,9 @@ def test_input_pymatgen():
         }]
     }
 
-    a = Atoms(['Si', 'Si', 'Si', 'Si', 'C', 'C', 'C', 'C'],
-              cell=[8.277, 8.277, 8.277])
-    a.set_scaled_positions([
+    atoms = Atoms(['Si', 'Si', 'Si', 'Si', 'C', 'C', 'C', 'C'],
+                  cell=[8.277, 8.277, 8.277])
+    atoms.set_scaled_positions([
         (-0.5, -0.5, -0.5),
         (0.0, 0.0, -0.5),
         (0.0, -0.5, 0.0),
@@ -66,11 +67,11 @@ def test_input_pymatgen():
         (0.25, -0.25, 0.25),
         (-0.25, 0.25, 0.25),
     ])
-    s = orm.StructureData(ase=a)
+    structure = orm.StructureData(ase=atoms)
 
     ## Test 1
     # Input file string prodiced by pymatgen
-    app = _prepare_pymatgen_dict(par, s)
+    app = _prepare_pymatgen_dict(par, structure)
     # Target input file
     target_string = '''set nwpw:minimizer 2
 set nwpw:psi_nolattice .true.
@@ -107,7 +108,7 @@ task pspw optimize
     par['add_cell'] = True
 
     # Input file string prodiced by pymatgen
-    app = _prepare_pymatgen_dict(par, s)
+    app = _prepare_pymatgen_dict(par, structure)
     # Target input file
     target_string = '''set nwpw:minimizer 2
 set nwpw:psi_nolattice .true.

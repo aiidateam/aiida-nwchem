@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 """Calculation classes for aiida-nwchem."""
 import re
-from importlib import invalidate_caches
 
-import numpy as np
 from aiida import orm
 from aiida.common.datastructures import CalcInfo, CodeInfo
 from aiida.engine import CalcJob
+import numpy as np
 
 __all__ = ('NwchemBaseCalculation', 'NwchemCalculation')
 
@@ -30,49 +29,85 @@ class NwchemBaseCalculation(CalcJob):
     @classmethod
     def define(cls, spec):
         """Define the process specification."""
-        # yapf: disable
         super().define(spec)
-        spec.input('input_file', valid_type=orm.SinglefileData, required=True, help='NWChem input file')
-        spec.input('restart_folder', valid_type=(orm.RemoteData, orm.FolderData), required=False,
-             help='Remote directory of a completed NWChem calculation to restart from.')
+        spec.input('input_file',
+                   valid_type=orm.SinglefileData,
+                   required=True,
+                   help='NWChem input file')
+        spec.input(
+            'restart_folder',
+            valid_type=(orm.RemoteData, orm.FolderData),
+            required=False,
+            help=
+            'Remote directory of a completed NWChem calculation to restart from.'
+        )
 
         spec.inputs['metadata']['options']['withmpi'].default = True
-        spec.inputs['metadata']['options']['parser_name'].default = 'nwchem.nwchem'
-        spec.input('metadata.options.input_filename', valid_type=str, default=cls._DEFAULT_INPUT_FILE)
-        spec.input('metadata.options.output_filename', valid_type=str, default=cls._DEFAULT_OUTPUT_FILE)
+        spec.inputs['metadata']['options'][
+            'parser_name'].default = 'nwchem.nwchem'
+        spec.input('metadata.options.input_filename',
+                   valid_type=str,
+                   default=cls._DEFAULT_INPUT_FILE)
+        spec.input('metadata.options.output_filename',
+                   valid_type=str,
+                   default=cls._DEFAULT_OUTPUT_FILE)
         spec.input('metadata.options.total_memory',
-            valid_type=float,
-            default=2000.,
-            help='Total memory available per MPI process in MB')
+                   valid_type=float,
+                   default=2000.,
+                   help='Total memory available per MPI process in MB')
 
         spec.output('output_parameters', valid_type=orm.Dict)
-        spec.output('output_structure', valid_type=orm.StructureData, required=False,
-            help='The relaxed output structure.')
+        spec.output('output_structure',
+                    valid_type=orm.StructureData,
+                    required=False,
+                    help='The relaxed output structure.')
 
         spec.default_output_node = 'output_parameters'
 
         # Standard exceptions
-        spec.exit_code(300, 'ERROR_MISSING_OUTPUT_FILES',
-            message='Required output files are missing.', invalidates_cache=True)
-        spec.exit_code(301, 'ERROR_NO_RETRIEVED_TEMPORARY_FOLDER',
-            message='The retrieved temporary folder could not be accessed.', invalidates_cache=True)
-        spec.exit_code(302, 'ERROR_OUTPUT_STDOUT_MISSING',
-            message='The retrieved folder did not contain the required stdout output file.', invalidates_cache=True)
-        spec.exit_code(310, 'ERROR_OUTPUT_STDOUT_READ',
-            message='The stdout output file could not be read.', invalidates_cache=True)
-        spec.exit_code(312, 'ERROR_OUTPUT_STDOUT_INCOMPLETE',
-            message='The stdout output file was incomplete.', invalidate_cache=True)
-        spec.exit_code(313, 'ERROR_MULTIPLE_CALCULATIONS',
-            message='The stdout contains multiple calculations')
-        spec.exit_code(340, 'ERROR_OUT_OF_WALLTIME_INTERRUPTED',
-            message='The calculation stopped prematurely because it ran out of walltime but the job was killed by the '
-                    'scheduler before the files were safely written to disk for a potential restart.', invalidates_cache=True)
-        spec.exit_code(350, 'ERROR_UNEXPECTED_PARSER_EXCEPTION',
-            message='The parser raised an unexpected exception.', invalidates_cache=True)
-        spec.exit_code(401, 'ERROR_NON_PERIODIC_CELL',
-            message='A simulation cell was requested but the structure has at least one non-periodic dimension.')
-
-        # yapf: enable
+        spec.exit_code(300,
+                       'ERROR_MISSING_OUTPUT_FILES',
+                       message='Required output files are missing.',
+                       invalidates_cache=True)
+        spec.exit_code(
+            301,
+            'ERROR_NO_RETRIEVED_TEMPORARY_FOLDER',
+            message='The retrieved temporary folder could not be accessed.',
+            invalidates_cache=True)
+        spec.exit_code(
+            302,
+            'ERROR_OUTPUT_STDOUT_MISSING',
+            message=
+            'The retrieved folder did not contain the required stdout output file.',
+            invalidates_cache=True)
+        spec.exit_code(310,
+                       'ERROR_OUTPUT_STDOUT_READ',
+                       message='The stdout output file could not be read.',
+                       invalidates_cache=True)
+        spec.exit_code(312,
+                       'ERROR_OUTPUT_STDOUT_INCOMPLETE',
+                       message='The stdout output file was incomplete.',
+                       invalidate_cache=True)
+        spec.exit_code(313,
+                       'ERROR_MULTIPLE_CALCULATIONS',
+                       message='The stdout contains multiple calculations')
+        spec.exit_code(
+            340,
+            'ERROR_OUT_OF_WALLTIME_INTERRUPTED',
+            message=
+            'The calculation stopped prematurely because it ran out of walltime but the job was killed by the '
+            'scheduler before the files were safely written to disk for a potential restart.',
+            invalidates_cache=True)
+        spec.exit_code(350,
+                       'ERROR_UNEXPECTED_PARSER_EXCEPTION',
+                       message='The parser raised an unexpected exception.',
+                       invalidates_cache=True)
+        spec.exit_code(
+            401,
+            'ERROR_NON_PERIODIC_CELL',
+            message=
+            'A simulation cell was requested but the structure has at least one non-periodic dimension.'
+        )
 
     def prepare_for_submission(self, folder):
         """Prepare the calculation job for submission by transforming input nodes into input files.
@@ -84,7 +119,7 @@ class NwchemBaseCalculation(CalcJob):
         """
 
         input_filename = folder.get_abs_path(self._DEFAULT_INPUT_FILE)
-        with open(input_filename, 'w') as handle:
+        with open(input_filename, 'w', encoding='utf-8') as handle:
             handle.write(self._get_input_file())
 
         _default_commandline_params = [self._DEFAULT_INPUT_FILE]

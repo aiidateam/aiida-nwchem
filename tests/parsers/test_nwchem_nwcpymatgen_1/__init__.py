@@ -7,10 +7,13 @@
 # For further information on the license, see the LICENSE.txt file        #
 # For further information please visit http://www.aiida.net               #
 ###########################################################################
-
+"""Test module."""
 from distutils.version import StrictVersion
 
-from aiida.orm.data.structure import get_pymatgen_version, has_pymatgen
+try:
+    from aiida.orm.data.structure import get_pymatgen_version, has_pymatgen
+except ImportError:
+    from aiida.orm.nodes.data.structure import get_pymatgen_version, has_pymatgen
 
 
 def skip_condition():

@@ -15,8 +15,7 @@ class NwchemBaseWorkChain(BaseRestartWorkChain):
 
     @classmethod
     def define(cls, spec):
-
-        super(NwchemBaseWorkChain, cls).define(spec)
+        super().define(spec)
         spec.expose_inputs(NwchemCalculation, namespace='nwchem')
 
         spec.outline(
@@ -36,7 +35,6 @@ class NwchemBaseWorkChain(BaseRestartWorkChain):
         This `self.ctx.inputs` dictionary will be used by the `BaseRestartWorkChain` to submit the calculations in the
         internal loop.
         """
-
-        super(NwchemBaseWorkChain, self).setup()
+        super().setup()
         self.ctx.inputs = AttributeDict(
             self.exposed_inputs(NwchemCalculation, 'nwchem'))
