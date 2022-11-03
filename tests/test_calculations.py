@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Test NWChem calculations"""
-import pytest
 from aiida import engine, orm, plugins
+import pytest
 
 from . import DATA_DIR
 

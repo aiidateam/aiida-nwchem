@@ -14,6 +14,7 @@ from .nwchem import NwchemBaseParser
 
 
 class BasenwcParser(Parser):
+    """Base implementation of :class:`aiida.parsers.Parser`."""
 
     def parse_with_retrieved(self, retrieved):
         """
@@ -26,17 +27,17 @@ class BasenwcParser(Parser):
         error_path = None
         try:
             output_path, error_path = self._fetch_output_files(retrieved)
-        except InvalidOperation:
+        except InvalidOperation:  # pylint: disable=try-except-raise
             raise
-        except IOError as e:
-            self.logger.error(e.message)
+        except IOError as exception:
+            self.logger.error(str(exception))
             return False, ()
 
         if output_path is None and error_path is None:
             self.logger.error('No output files found')
             return False, ()
 
-        return True, self._get_output_nodes(output_path, error_path)
+        return True, self._get_output_nodes(output_path, error_path)  # pylint: disable=no-member
 
     def _fetch_output_files(self, retrieved):
         """
@@ -46,7 +47,7 @@ class BasenwcParser(Parser):
         :param retrieved: A dictionary of retrieved nodes, as obtained from the
           parser.
         """
-        # pylint: disable=protected-access
+        # pylint: disable=protected-access,no-member
         import os
 
         # check in order not to overwrite anything
