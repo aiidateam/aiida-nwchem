@@ -87,7 +87,7 @@ class NwchemBaseCalculation(CalcJob):
         spec.exit_code(312,
                        'ERROR_OUTPUT_STDOUT_INCOMPLETE',
                        message='The stdout output file was incomplete.',
-                       invalidate_cache=True)
+                       invalidates_cache=True)
         spec.exit_code(313,
                        'ERROR_MULTIPLE_CALCULATIONS',
                        message='The stdout contains multiple calculations')
@@ -102,12 +102,6 @@ class NwchemBaseCalculation(CalcJob):
                        'ERROR_UNEXPECTED_PARSER_EXCEPTION',
                        message='The parser raised an unexpected exception.',
                        invalidates_cache=True)
-        spec.exit_code(
-            401,
-            'ERROR_NON_PERIODIC_CELL',
-            message=
-            'A simulation cell was requested but the structure has at least one non-periodic dimension.'
-        )
 
     def prepare_for_submission(self, folder):
         """Prepare the calculation job for submission by transforming input nodes into input files.
@@ -191,30 +185,28 @@ class NwchemCalculation(NwchemBaseCalculation):
     @classmethod
     def define(cls, spec):
         """Define the process specification."""
-        # yapf: disable
         super().define(spec)
-        #spec.expose_inputs(super().__class__, exclude=('input_file'))
         del spec.inputs['input_file']
-        spec.input('parameters', valid_type=orm.Dict, required=True, validator=validate_parameters,
-            help='Input parameters')
-        spec.input('structure', valid_type=orm.StructureData, required=True,
-            help='The input structure, with or without a cell')
-        spec.input('add_cell', valid_type=orm.Bool, default=lambda:orm.Bool(False),
-            help='The input structure, with or without a cell')
+        spec.input('parameters',
+                   valid_type=orm.Dict,
+                   required=True,
+                   validator=validate_parameters,
+                   help='Input parameters')
+        spec.input('structure',
+                   valid_type=orm.StructureData,
+                   required=True,
+                   help='The input structure, with or without a cell')
+        spec.input('add_cell',
+                   valid_type=orm.Bool,
+                   default=lambda: orm.Bool(False),
+                   help='The input structure, with or without a cell')
+        spec.inputs.validator = cls.validate_inputs
 
-    def prepare_for_submission(self, folder):
-        """Prepare the calculation job for submission by transforming input nodes into input files.
-        In addition to the input files being written to the sandbox folder, a `CalcInfo` instance will be returned that
-        contains lists of files that need to be copied to the remote machine before job submission, as well as file
-        lists that are to be retrieved after job completion.
-        :param folder: a sandbox folder to temporarily write files on disk.
-        :return: `aiida.common.datastructures.CalcInfo` instance.
-        """
-        if self.inputs.add_cell:
-            if self.inputs.structure.pbc != (True, True, True): # Any dimension not periodic
-                return self.exit_codes.ERROR_NON_PERIODIC_CELL  # pylint: disable=no-member
-
-        return super().prepare_for_submission(folder)
+    @staticmethod
+    def validate_inputs(value, _):
+        """Validate the inputs."""
+        if value['add_cell'] and not all(value['structure'].pbc):
+            return 'if `add_cell` is `True` then the `structure` needs to have set `pbc` to `(True, True, True)`.'
 
     def _get_input_file(self):
         """Prepare NWChem input file from CalcJob inputs.
@@ -223,10 +215,11 @@ class NwchemCalculation(NwchemBaseCalculation):
         """
         inputs = self.inputs
         parameters = inputs.parameters.get_dict()
-        abbreviation = parameters.pop('abbreviation', self._DEFAULT_ABBREVIATION)
-        title = parameters.pop('title','AiiDA NWChem calculation')
+        abbreviation = parameters.pop('abbreviation',
+                                      self._DEFAULT_ABBREVIATION)
+        title = parameters.pop('title', 'AiiDA NWChem calculation')
         memory = inputs.metadata.options.total_memory
-        basis = parameters.pop('basis',None)
+        basis = parameters.pop('basis', None)
         symmetry = parameters.pop('symmetry', None)
         set_commands = parameters.pop('set', None)
         task = parameters.pop('task', None)
@@ -266,8 +259,10 @@ class NwchemCalculation(NwchemBaseCalculation):
         input_str += 'geometry units angstroms noautoz noautosym\n'
         if add_cell:
             input_str += '  system crystal\n'
-            input_str += '    lat_a {}\n    lat_b {}\n    lat_c {}\n'.format(*cell_lengths)
-            input_str += '    alpha {}\n    beta  {}\n    gamma {}\n'.format(*cell_angles)
+            input_str += '    lat_a {}\n    lat_b {}\n    lat_c {}\n'.format(
+                *cell_lengths)
+            input_str += '    alpha {}\n    beta  {}\n    gamma {}\n'.format(
+                *cell_angles)
             input_str += '  end\n'
         if symmetry:
             input_str += f'  symmetry {symmetry}\n'
@@ -282,23 +277,24 @@ class NwchemCalculation(NwchemBaseCalculation):
         # Basis
         if basis:
             input_str += 'basis\n'
-            for atom_type,basis_name in basis.items():
+            for atom_type, basis_name in basis.items():
                 input_str += f'  {atom_type} {basis_name}\n'
             input_str += 'end\n'
 
-        input_str = _convert_parameters(parameters, indent=0, input_str=input_str)
+        input_str = _convert_parameters(parameters,
+                                        indent=0,
+                                        input_str=input_str)
 
         # Any 'set' commands
         if set_commands:
             for key, value in set_commands.items():
                 input_str += f'set {key} {value}\n'
 
-        # Add the task as the final line
+        # Add the task as the final line
         if task:
             input_str += f'task {task}\n'
 
         return input_str
-
 
 
 # Additional free-form parameters
@@ -306,10 +302,12 @@ def _convert_parameters(parameters, indent, input_str):
     """Helper function to write out any further parameters passed."""
     for key, value in parameters.items():
         if isinstance(value, dict):
-            input_str += ' '*4*indent + f'{key}\n'
-            input_str = _convert_parameters(value, indent+1, input_str=input_str)
-            input_str += ' '*4*indent+'end\n'
+            input_str += ' ' * 4 * indent + f'{key}\n'
+            input_str = _convert_parameters(value,
+                                            indent + 1,
+                                            input_str=input_str)
+            input_str += ' ' * 4 * indent + 'end\n'
         else:
-            input_str += ' '*4*indent + f'{key} {value}\n'
+            input_str += ' ' * 4 * indent + f'{key} {value}\n'
 
     return input_str
