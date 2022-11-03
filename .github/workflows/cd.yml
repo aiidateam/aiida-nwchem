@@ -1,0 +1,104 @@
+name: cd
+
+on:
+    push:
+        tags:
+        -   'v[0-9]+.[0-9]+.[0-9]+*'
+
+jobs:
+
+    validate-release-tag:
+
+        if: github.repository == 'aiidateam/aiida-nwchem'
+        runs-on: ubuntu-latest
+
+        steps:
+        -   name: Checkout source
+            uses: actions/checkout@v2
+
+        -   name: Set up Python 3.8
+            uses: actions/setup-python@v2
+            with:
+                python-version: '3.8'
+
+        -   name: Validate the tag version against the package version
+            run: python .github/workflows/validate_release_tag.py $GITHUB_REF
+
+    pre-commit:
+
+        needs: [validate-release-tag]
+
+        runs-on: ubuntu-latest
+
+        steps:
+        -   uses: actions/checkout@v2
+
+        -   name: Install Python 3.8
+            uses: actions/setup-python@v2
+            with:
+                python-version: '3.8'
+
+        -   name: Install Python package and dependencies
+            run: pip install -e .[pre-commit,tests]
+
+        -   uses: pre-commit/action@v2.0.0
+
+    tests:
+
+        needs: [validate-release-tag]
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+
+        strategy:
+            matrix:
+                python-version: ['3.6', '3.7', '3.8']
+
+        services:
+            rabbitmq:
+                image: rabbitmq:latest
+                ports:
+                -   5672:5672
+
+        steps:
+        -   uses: actions/checkout@v2
+
+        -   name: Install Python ${{ matrix.python-version }}
+            uses: actions/setup-python@v2
+            with:
+                python-version: ${{ matrix.python-version }}
+
+        -   name: Install system dependencies
+            run: sudo apt update && sudo apt install postgresql nwchem
+
+        -   name: Install Python package and dependencies
+            run: pip install -e .[tests]
+
+        -   name: Run `reentry scan` if installed (required for `aiida-core<2.0`)
+            run: if [ -x "$(command -v reentry)" ];then reentry scan; fi
+
+        -   name: Run pytest
+            run: pytest -sv tests
+
+    publish:
+
+        name: Publish to PyPI
+        needs: [pre-commit, tests]
+        runs-on: ubuntu-latest
+
+        steps:
+        -   name: Checkout source
+            uses: actions/checkout@v2
+
+        -   name: Set up Python 3.8
+            uses: actions/setup-python@v2
+            with:
+                python-version: '3.8'
+
+        -   name: Install flit
+            run: pip install flit~=3.4
+
+        -   name: Build and publish
+            run: flit publish
+            env:
+                FLIT_USERNAME: __token__
+                FLIT_PASSWORD: ${{ secrets.PYPI_TOKEN }}
