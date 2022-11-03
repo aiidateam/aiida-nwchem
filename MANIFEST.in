@@ -1,5 +1,0 @@
-include setup.json
-include LICENSE.txt
-include README.md
-recursive-include tests *
-recursive-include docs *
