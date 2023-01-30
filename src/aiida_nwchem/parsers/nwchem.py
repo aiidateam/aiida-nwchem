@@ -73,7 +73,7 @@ class NwchemBaseParser(Parser):
 
         # Check if NWChem finished:
         #TODO: Handle the case of the 'ignore' keyword  # pylint: disable=fixme
-        if not re.search(r'^\sTotal times  cpu:', all_lines[-1]):
+        if not all_lines or not re.search(r'^\sTotal times  cpu:', all_lines[-1]):
             return self.exit_codes.ERROR_OUTPUT_STDOUT_INCOMPLETE
 
         # In either case try to parse
