@@ -9,17 +9,17 @@ jobs:
         runs-on: ubuntu-latest
 
         steps:
-        -   uses: actions/checkout@v2
+        -   uses: actions/checkout@v3
 
         -   name: Install Python 3.10
-            uses: actions/setup-python@v2
+            uses: actions/setup-python@v3
             with:
                 python-version: '3.10'
 
         -   name: Install Python package and dependencies
             run: pip install -e .[pre-commit,tests]
 
-        -   uses: pre-commit/action@v2.0.0
+        -   uses: pre-commit/action@v3.0.0
 
     tests:
 
@@ -38,10 +38,10 @@ jobs:
                 -   5672:5672
 
         steps:
-        -   uses: actions/checkout@v2
+        -   uses: actions/checkout@v3
 
         -   name: Install Python ${{ matrix.python-version }}
-            uses: actions/setup-python@v2
+            uses: actions/setup-python@v3
             with:
                 python-version: ${{ matrix.python-version }}
 
