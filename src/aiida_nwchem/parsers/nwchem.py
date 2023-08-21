@@ -624,5 +624,7 @@ class NwchemBaseParser(Parser):
                 task_dict['cpu_time'] = result.group(1)
                 task_dict['wall_time'] = result.group(2)
                 break
+            
+        self.out('output_parameters', orm.Dict(dict=task_dict))
 
         return task_dict, nodes
