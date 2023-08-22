@@ -1,5 +1,11 @@
 # Change log
 
+## `v3.0.1` - 2023-08-22
+
+- `NwchemParser`: Do not except for missing output [[242b40c]](https://github.com/aiidateam/aiida-nwchem/commit/242b40c0f420153c86409fefe6f6970c6fcf3795)
+- `NwchemParser`: Fix output from `parse_freq` not being attached [[3421c51]](https://github.com/aiidateam/aiida-nwchem/commit/3421c516265eb35dc905fd4c7b0023fe605a8389)
+
+
 ## `v3.0.0` - 2022-11-03
 
 First release to be officially and fully compatible with AiiDA v2.0.
